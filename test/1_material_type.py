@@ -25,48 +25,72 @@ class Neo4jConnector:
             self.driver.close()
             print("🔌 Neo4j 数据库连接已关闭。")
 
-    def get_child_nodes(self, parent_name):
-        """获取指定节点的所有子节点名称"""
+    def get_child_nodes_by_element_id(self, parent_element_id):
+        """
+        通过elementId获取子节点
+        :param parent_element_id: 父节点的elementId
+        :return: 返回列表，每个元素是字典 {name, elementId}
+        """
         if self.driver is None:
             return []
         
         with self.driver.session() as session:
             try:
-                query = f"MATCH (a{{name: '{parent_name}'}})-[r]->(b) RETURN b.name"
-                result = session.run(query)
-                child_names = [record["b.name"] for record in result]
-                return child_names
+                query = """
+                MATCH (a)-[r]->(b)
+                WHERE elementId(a) = $parent_id
+                RETURN b.name as name, elementId(b) as elementId
+                LIMIT 10
+                """
+                
+                result = session.run(query, parent_id=parent_element_id)
+                nodes = [{"name": record["name"], "elementId": record["elementId"]} 
+                        for record in result]
+                return nodes
             except Exception as e:
-                print(f"❌ 查询子节点时出错 (parent={parent_name}): {e}")
+                print(f"❌ 查询子节点时出错 (elementId={parent_element_id}): {e}")
                 return []
 
-    def build_classification_info(self, parent_category):
+    def build_classification_info(self, parent_element_id, parent_name):
         """
         构建分类信息：获取父类的所有子类，以及每个子类的例子
-        返回字典: {子类名: [例子列表]}
+        :param parent_element_id: 父节点的elementId
+        :param parent_name: 父节点的名称（用于显示）
+        :return: 字典 {子类名: {elementId, examples}}
         """
-        print(f"\n--- 正在从Neo4j获取 '{parent_category}' 的分类信息 ---")
+        print(f"\n--- 正在从Neo4j获取 '{parent_name}' (elementId={parent_element_id}) 的分类信息 ---")
         
         # 第一步：获取所有子类
-        subtypes = self.get_child_nodes(parent_category)
+        subtypes = self.get_child_nodes_by_element_id(parent_element_id)
         
         if not subtypes:
-            print(f"❌ 未找到 '{parent_category}' 的子类")
+            print(f"❌ 未找到 '{parent_name}' 的子类")
             return {}
         
-        print(f"✅ 找到 {len(subtypes)} 个子类: {', '.join(subtypes)}")
+        print(f"✅ 找到 {len(subtypes)} 个子类: {', '.join([n['name'] for n in subtypes])}")
         
-        # 第二步：为每个子类获取例子
-        subtype_examples = {}
+        # 第二步：为每个子类获取例子（最多10个）
+        subtype_info = {}
         for subtype in subtypes:
-            examples = self.get_child_nodes(subtype)
-            subtype_examples[subtype] = examples
-            if examples:
-                print(f"   - {subtype}: {', '.join(examples[:5])}{'...' if len(examples) > 5 else ''}")
+            subtype_name = subtype['name']
+            subtype_element_id = subtype['elementId']
+            
+            examples = self.get_child_nodes_by_element_id(subtype_element_id)
+            
+            subtype_info[subtype_name] = {
+                'elementId': subtype_element_id,
+                'examples': [ex['name'] for ex in examples[:10]]  # 最多10个例子
+            }
+            
+            if subtype_info[subtype_name]['examples']:
+                example_str = ', '.join(subtype_info[subtype_name]['examples'][:5])
+                if len(subtype_info[subtype_name]['examples']) > 5:
+                    example_str += '...'
+                print(f"   - {subtype_name}: {example_str}")
             else:
-                print(f"   - {subtype}: (无例子)")
+                print(f"   - {subtype_name}: (无例子)")
         
-        return subtype_examples
+        return subtype_info
 
 
 def read_material_from_json(file_path):
@@ -89,25 +113,75 @@ def read_material_from_json(file_path):
         return None
 
 
-def build_system_prompt(subtype_examples):
-    """根据从Neo4j获取的信息构建system prompt"""
+def generate_task_description(parent_name, subtype_list):
+    """
+    调用API生成任务描述
+    :param parent_name: 父类名称
+    :param subtype_list: 子类列表
+    :return: 任务描述字符串
+    """
+    print(f"\n--- 正在调用API生成任务描述 ---")
     
-    prompt = """材料知识图谱是一个管理了各种材料的层次逻辑关系的树，你是这个智能图谱的节点挂载器，你的任务是对于给定的一种材料和若干材料类型中，输出该材料属于的材料类型。
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        print("⚠️  未找到API密钥，使用默认任务描述")
+        return f"你的任务是判断给定的材料具体属于{parent_name}的哪个子类型。"
+    
+    client = openai.OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+    
+    prompt = f"""
+请生成一个简洁的任务描述。
 
-请根据材料的性质和用途，从以下材料类型中选择一个最合适的分类：
+背景：材料知识图谱是一个管理了各种材料的层次逻辑关系的树，你是这个智能图谱的节点挂载器。
 
+当前层级：{parent_name}
+子类型列表：{', '.join(subtype_list)}
+
+请生成"你的任务是..."这部分的描述，要求：
+1. 简洁明了，不超过50字
+2. 说明需要判断材料属于哪个子类型
+3. 只返回任务描述文本，不要其他内容
+
+示例格式：你的任务是判断给定的材料具体属于哪个材料类型。
 """
     
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=100
+        )
+        task_desc = response.choices[0].message.content.strip()
+        print(f"✅ 生成的任务描述: {task_desc}")
+        return task_desc
+    except Exception as e:
+        print(f"⚠️  生成任务描述失败: {e}，使用默认描述")
+        return f"你的任务是判断给定的材料具体属于哪个材料类型。"
+
+
+def build_system_prompt(parent_name, subtype_info):
+    """根据从Neo4j获取的信息构建system prompt"""
+    
+    # 固定开头
+    prompt = "材料知识图谱是一个管理了各种材料的层次逻辑关系的树，你是这个智能图谱的节点挂载器。\n\n"
+    
+    # 动态生成任务描述
+    subtype_list = list(subtype_info.keys())
+    task_desc = generate_task_description(parent_name, subtype_list)
+    prompt += task_desc + "\n\n"
+    
+    prompt += "请根据材料的性质和用途，从以下材料类型中选择一个最合适的分类：\n\n"
+    
     # 为每个类型添加例子
-    for material_type, examples in subtype_examples.items():
+    for material_type, info in subtype_info.items():
         prompt += f"- {material_type}"
         
-        # 添加例子（限制显示数量避免prompt过长）
+        # 添加例子（最多10个）
+        examples = info['examples']
         if examples:
-            example_list = examples[:5]  # 最多显示5个例子
+            example_list = examples[:10]
             prompt += f"\n  例子：{', '.join(example_list)}"
-            if len(examples) > 5:
-                prompt += " 等"
         
         prompt += "\n\n"
     
@@ -226,23 +300,26 @@ def main():
         print("❌ 无法连接Neo4j，终止程序")
         return
     
-    # 获取"材料"的所有子类型及其例子
-    # 注意：这里假设根节点是"材料"，如果不是请修改
-    subtype_examples = conn.build_classification_info("材料")
+    # 使用已知的"材料"节点的elementId
+    root_element_id = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
+    root_name = "材料"
     
-    if not subtype_examples:
+    # 获取"材料"的所有子类型及其例子
+    subtype_info = conn.build_classification_info(root_element_id, root_name)
+    
+    if not subtype_info:
         print("❌ 无法获取分类信息")
         conn.close()
         return
     
     # 步骤3：构建system prompt
-    system_prompt = build_system_prompt(subtype_examples)
+    system_prompt = build_system_prompt(root_name, subtype_info)
     
     # 步骤4：进行分类
     print("\n待分类材料数据:")
     print(json.dumps(material_data, ensure_ascii=False, indent=2))
     
-    valid_types = list(subtype_examples.keys())
+    valid_types = list(subtype_info.keys())
     print(f"\n候选材料类型: {', '.join(valid_types)}")
     
     classification = classify_material(material_data, system_prompt, valid_types)

@@ -25,10 +25,11 @@ class Neo4jConnector:
             self.driver.close()
             print("🔌 Neo4j 数据库连接已关闭。")
 
-    def get_child_nodes_by_element_id(self, parent_element_id):
+    def get_child_nodes_by_element_id(self, parent_element_id, use_undirected=False):
         """
         通过elementId获取子节点
         :param parent_element_id: 父节点的elementId
+        :param use_undirected: 是否使用无向边（第三层查询例子时使用）
         :return: 返回列表，每个元素是字典 {name, elementId}
         """
         if self.driver is None:
@@ -36,12 +37,21 @@ class Neo4jConnector:
         
         with self.driver.session() as session:
             try:
-                query = """
-                MATCH (a)-[r]->(b)
-                WHERE elementId(a) = $parent_id
-                RETURN b.name as name, elementId(b) as elementId
-                LIMIT 10
-                """
+                # 根据是否使用无向边选择查询语句
+                if use_undirected:
+                    query = """
+                    MATCH (a)-[r]-(b)
+                    WHERE elementId(a) = $parent_id
+                    RETURN b.name as name, elementId(b) as elementId
+                    LIMIT 10
+                    """
+                else:
+                    query = """
+                    MATCH (a)-[r]->(b)
+                    WHERE elementId(a) = $parent_id
+                    RETURN b.name as name, elementId(b) as elementId
+                    LIMIT 10
+                    """
                 
                 result = session.run(query, parent_id=parent_element_id)
                 nodes = [{"name": record["name"], "elementId": record["elementId"]} 
@@ -51,17 +61,18 @@ class Neo4jConnector:
                 print(f"❌ 查询子节点时出错 (elementId={parent_element_id}): {e}")
                 return []
 
-    def build_classification_info(self, parent_element_id, parent_name):
+    def build_classification_info(self, parent_element_id, parent_name, is_third_layer=False):
         """
         构建分类信息：获取父类的所有子类，以及每个子类的例子
         :param parent_element_id: 父节点的elementId
         :param parent_name: 父节点的名称（用于显示）
+        :param is_third_layer: 是否是第三层（第三层查询例子时使用无向边）
         :return: 字典 {子类名: {elementId, examples}}
         """
         print(f"\n--- 正在从Neo4j获取 '{parent_name}' (elementId={parent_element_id}) 的分类信息 ---")
         
-        # 第一步：获取所有子类
-        subtypes = self.get_child_nodes_by_element_id(parent_element_id)
+        # 第一步：获取所有子类（用有向边）
+        subtypes = self.get_child_nodes_by_element_id(parent_element_id, use_undirected=False)
         
         if not subtypes:
             print(f"❌ 未找到 '{parent_name}' 的子类")
@@ -69,13 +80,17 @@ class Neo4jConnector:
         
         print(f"✅ 找到 {len(subtypes)} 个子类: {', '.join([n['name'] for n in subtypes])}")
         
-        # 第二步：为每个子类获取例子（最多10个）
+        # 第二步：为每个子类获取例子
         subtype_info = {}
         for subtype in subtypes:
             subtype_name = subtype['name']
             subtype_element_id = subtype['elementId']
             
-            examples = self.get_child_nodes_by_element_id(subtype_element_id)
+            # 如果是第三层，查询例子时使用无向边
+            examples = self.get_child_nodes_by_element_id(
+                subtype_element_id, 
+                use_undirected=is_third_layer
+            )
             
             subtype_info[subtype_name] = {
                 'elementId': subtype_element_id,
@@ -134,7 +149,7 @@ def generate_task_description(parent_name, subtype_list):
 
 背景：材料知识图谱是一个管理了各种材料的层次逻辑关系的树，你是这个智能图谱的节点挂载器。
 
-当前层级：已知材料属于「{parent_name}」
+当前层级：已知材料属于"{parent_name}"
 子类型列表：{', '.join(subtype_list)}
 
 请生成"你的任务是..."这部分的描述，要求：
@@ -172,23 +187,11 @@ def build_system_prompt(parent_name, subtype_info):
     prompt += task_desc + "\n\n"
     
     prompt += f'已知材料属于"{parent_name}"大类。\n\n'
-    prompt += "请根据材料的成分、性质和用途，从以下金属材料子类型中选择一个最合适的分类：\n\n"
+    prompt += f"请根据材料的成分、性质和用途，从以下{parent_name}子类型中选择一个最合适的分类：\n\n"
     
-    # 子类型描述（针对金属材料的具体描述）
-    descriptions = {
-        "钢铁": "主要由铁和碳组成的合金",
-        "有色金属材料": "铁以外的金属及其合金（如铜、铝、镁、钛等）",
-        "金属功能材料": "具有特殊物理、化学或生物功能的金属材料",
-        "特殊用途金属材料": "用于特定应用场景的金属材料",
-        "粉末冶金材料": "通过粉末冶金工艺制造的金属材料"
-    }
-    
-    # 为每个子类型添加描述和例子
+    # 为每个子类型添加例子
     for subtype_name, info in subtype_info.items():
-        desc = descriptions.get(subtype_name, "")
         prompt += f"- {subtype_name}"
-        if desc:
-            prompt += f"：{desc}"
         
         # 添加例子（最多10个）
         examples = info['examples']
@@ -202,33 +205,26 @@ def build_system_prompt(parent_name, subtype_info):
     return prompt
 
 
-def classify_metal_subtype(material_data, system_prompt, valid_subtypes):
-    """调用DeepSeek API进行金属材料子类型分类，带自动纠错"""
-    print("\n--- 正在调用DeepSeek API进行金属材料子类型分类 ---")
+def classify_with_retry(material_data, system_prompt, valid_subtypes, layer_name):
+    """调用DeepSeek API进行分类，带自动纠错"""
+    print(f"\n--- 正在调用DeepSeek API进行{layer_name}分类 ---")
     
-    # 从环境变量获取API密钥
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         print("❌ 错误：未找到 DEEPSEEK_API_KEY 环境变量。")
-        print("   请先设置密钥：export DEEPSEEK_API_KEY='your-api-key'")
         return None
 
-    # 创建OpenAI客户端
     client = openai.OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
     
-    # 将材料数据格式化为JSON字符串
     material_str = json.dumps(material_data, ensure_ascii=False, indent=2)
     
-    # 构建用户提示词
     user_prompt = f"""
 材料数据：
 ```json
 {material_str}
 ```
 
-已知该材料属于"金属材料"大类。
-
-请根据材料数据判断它属于金属材料的哪个子类型。
+请根据材料数据判断它属于哪个子类型。
 """
     
     # 打印System Prompt
@@ -236,19 +232,17 @@ def classify_metal_subtype(material_data, system_prompt, valid_subtypes):
     print(system_prompt)
     print("===================================\n")
     
-    # 构建消息历史
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
     
-    max_retries = 3  # 最多重试3次
+    max_retries = 3
     
     for attempt in range(max_retries):
-        print(f"   - 正在发送请求到DeepSeek API (第{attempt + 1}次)...")
+        print(f"   - 正在发送请求 (第{attempt + 1}次)...")
         
         try:
-            # 发起API调用
             response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=messages,
@@ -259,36 +253,29 @@ def classify_metal_subtype(material_data, system_prompt, valid_subtypes):
             classification = response.choices[0].message.content.strip()
             print(f"✅ API返回: {classification}")
             
-            # 验证返回结果是否在有效列表中
             if classification in valid_subtypes:
-                print(f"✅ 验证通过！分类结果在候选列表中。")
+                print(f"✅ 验证通过！")
                 return classification
             else:
-                print(f"⚠️  警告：返回结果 '{classification}' 不在候选列表中")
-                print(f"   候选列表: {', '.join(valid_subtypes)}")
+                print(f"⚠️  警告：'{classification}' 不在候选列表中")
+                print(f"   候选: {', '.join(valid_subtypes)}")
                 
                 if attempt < max_retries - 1:
-                    # 添加助手回复和纠正消息到对话历史
                     messages.append({"role": "assistant", "content": classification})
-                    
                     correction_prompt = f"""
 你的回答 "{classification}" 不在候选子类型列表中。
 
-候选子类型列表只有以下选项：
-{', '.join(valid_subtypes)}
+候选列表只有：{', '.join(valid_subtypes)}
 
-请注意：你必须从上述列表中选择一个，而不能回答具体的材料名称或例子。
-
-请重新判断该材料属于哪个子类型，只输出子类型名称。
+请必须从上述列表中选择一个，不能回答具体的材料名称或例子。请重新判断。
 """
                     messages.append({"role": "user", "content": correction_prompt})
-                    print(f"   - 正在重试，要求从候选列表中选择...")
+                    print(f"   - 正在重试...")
                 else:
-                    print(f"❌ 已达到最大重试次数，仍未得到有效结果")
+                    print(f"❌ 已达到最大重试次数")
                     return None
-        
         except Exception as e:
-            print(f"❌ 调用DeepSeek API时出错: {e}")
+            print(f"❌ API调用出错: {e}")
             return None
     
     return None
@@ -311,67 +298,94 @@ def main():
     conn = Neo4jConnector(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
     
     if conn.driver is None:
-        print("❌ 无法连接Neo4j，终止程序")
+        print("❌ 无法连接Neo4j")
         return
     
-    # 步骤3：先获取"材料"的子类并分类（第一层）
+    # 步骤3：第一层 - 材料
     root_element_id = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
     root_name = "材料"
     
     print("\n" + "="*60)
-    print("第一层分类：材料类型")
+    print("第一层分类：材料 → 材料类型")
     print("="*60)
     
-    layer1_info = conn.build_classification_info(root_element_id, root_name)
+    layer1_info = conn.build_classification_info(root_element_id, root_name, is_third_layer=False)
     if not layer1_info:
         print("❌ 无法获取第一层分类信息")
         conn.close()
         return
     
-    # 假设第一层已知是"金属材料"（或者可以调用API分类）
-    # 这里为了演示，我们直接使用"金属材料"
-    first_layer_type = "金属材料"
+    system_prompt_1 = build_system_prompt(root_name, layer1_info)
+    valid_types_1 = list(layer1_info.keys())
     
-    if first_layer_type not in layer1_info:
-        print(f"❌ '{first_layer_type}' 不在第一层分类中")
+    print(f"\n候选类型: {', '.join(valid_types_1)}")
+    classification_1 = classify_with_retry(material_data, system_prompt_1, valid_types_1, "第一层")
+    
+    if not classification_1:
+        print("❌ 第一层分类失败")
         conn.close()
         return
     
-    metal_element_id = layer1_info[first_layer_type]['elementId']
-    print(f"✅ 使用第一层分类: {first_layer_type}")
+    print(f"\n🎯 第一层分类结果: {classification_1}")
+    layer1_element_id = layer1_info[classification_1]['elementId']
     
-    # 步骤4：获取"金属材料"的子类型及其例子
+    # 步骤4：第二层 - 金属材料子类型
     print("\n" + "="*60)
-    print(f"第二层分类：{first_layer_type}子类型")
+    print(f"第二层分类：{classification_1} → 子类型")
     print("="*60)
     
-    subtype_info = conn.build_classification_info(metal_element_id, first_layer_type)
-    
-    if not subtype_info:
-        print("❌ 无法获取分类信息")
+    layer2_info = conn.build_classification_info(layer1_element_id, classification_1, is_third_layer=False)
+    if not layer2_info:
+        print("❌ 无法获取第二层分类信息")
         conn.close()
         return
     
-    # 步骤5：构建system prompt
-    system_prompt = build_system_prompt(first_layer_type, subtype_info)
+    system_prompt_2 = build_system_prompt(classification_1, layer2_info)
+    valid_types_2 = list(layer2_info.keys())
     
-    # 步骤6：进行分类
-    print("\n待分类材料数据:")
-    print(json.dumps(material_data, ensure_ascii=False, indent=2))
-    print(f"\n已知材料大类: {first_layer_type}")
+    print(f"\n候选子类型: {', '.join(valid_types_2)}")
+    classification_2 = classify_with_retry(material_data, system_prompt_2, valid_types_2, "第二层")
     
-    valid_subtypes = list(subtype_info.keys())
-    print(f"候选子类型: {', '.join(valid_subtypes)}")
+    if not classification_2:
+        print("❌ 第二层分类失败")
+        conn.close()
+        return
     
-    classification = classify_metal_subtype(material_data, system_prompt, valid_subtypes)
+    print(f"\n🎯 第二层分类结果: {classification_2}")
+    layer2_element_id = layer2_info[classification_2]['elementId']
     
-    # 步骤7：输出结果
-    if classification:
-        print(f"\n🎯 金属材料子类型分类结果: {classification}")
+    # 步骤5：第三层 - 特殊用途金属材料子类型（使用无向边查询例子）
+    print("\n" + "="*60)
+    print(f"第三层分类：{classification_2} → 具体类型")
+    print("="*60)
+    
+    layer3_info = conn.build_classification_info(
+        layer2_element_id, 
+        classification_2, 
+        is_third_layer=True  # 第三层使用无向边查询例子
+    )
+    
+    if not layer3_info:
+        print("❌ 无法获取第三层分类信息")
+        conn.close()
+        return
+    
+    system_prompt_3 = build_system_prompt(classification_2, layer3_info)
+    valid_types_3 = list(layer3_info.keys())
+    
+    print(f"\n候选具体类型: {', '.join(valid_types_3)}")
+    classification_3 = classify_with_retry(material_data, system_prompt_3, valid_types_3, "第三层")
+    
+    if classification_3:
+        print(f"\n🎯 第三层分类结果: {classification_3}")
+        print("\n" + "="*60)
+        print("完整分类路径：")
+        print(f"{root_name} → {classification_1} → {classification_2} → {classification_3}")
+        print("="*60)
     else:
-        print("\n❌ 分类失败")
+        print("❌ 第三层分类失败")
     
-    # 关闭Neo4j连接
+    # 关闭连接
     conn.close()
 
 
