@@ -1,5 +1,5 @@
 """
-Function Call 处理模块 - 标准 Function Calling 实现
+Function Call 处理模块 - 标准实现（支持对话历史）
 """
 import json
 from openai import OpenAI
@@ -16,7 +16,7 @@ class FunctionCallHandler:
     
     def call_function_standard(self, messages, tools, available_functions, temperature=0):
         """
-        标准 Function Calling 流程（两次调用）
+        标准 Function Calling 流程（两次调用，返回更新后的对话历史）
         
         Args:
             messages: 消息列表
@@ -25,11 +25,13 @@ class FunctionCallHandler:
             temperature: 温度参数
         
         Returns:
-            dict: {success, result, function_name, arguments, raw_response}
+            dict: {
+                success, result, function_name, arguments, 
+                final_answer, updated_messages
+            }
         """
         try:
             # ===== 第一次调用：让模型决定调用什么函数 =====
-            print("🔄 第一次调用：让模型决定调用函数...")
             first_response = self.client.chat.completions.create(
                 model="deepseek-chat",
                 messages=messages,
@@ -45,7 +47,8 @@ class FunctionCallHandler:
                 return {
                     'success': False,
                     'error': '模型未调用函数',
-                    'raw_response': first_message.content
+                    'raw_response': first_message.content,
+                    'updated_messages': messages
                 }
             
             # 提取函数调用信息
@@ -53,41 +56,37 @@ class FunctionCallHandler:
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
             
-            print(f"✅ 模型决定调用函数: {function_name}")
-            print(f"📋 函数参数: {json.dumps(function_args, ensure_ascii=False)}")
-            
             # ===== 执行真实的 Python 函数 =====
             if function_name not in available_functions:
                 return {
                     'success': False,
-                    'error': f'函数 {function_name} 不可用'
+                    'error': f'函数 {function_name} 不可用',
+                    'updated_messages': messages
                 }
             
-            print(f"⚙️  执行真实函数: {function_name}()")
             function_to_call = available_functions[function_name]
             function_result = function_to_call(**function_args)
             
-            print(f"✅ 函数执行完成")
-            
             # ===== 将函数结果追加到消息历史 =====
-            messages.append(first_message)  # 添加模型的函数调用消息
-            messages.append({
+            updated_messages = messages.copy()
+            updated_messages.append(first_message)  # 添加模型的函数调用消息
+            updated_messages.append({
                 "role": "tool",
                 "content": json.dumps(function_result, ensure_ascii=False),
                 "tool_call_id": tool_call.id
             })
             
             # ===== 第二次调用：让模型基于函数结果生成最终答案 =====
-            print("🔄 第二次调用：让模型生成最终答案...")
             second_response = self.client.chat.completions.create(
                 model="deepseek-chat",
-                messages=messages,
+                messages=updated_messages,
                 temperature=temperature
             )
             
             final_message = second_response.choices[0].message
             
-            print(f"✅ 最终回答: {final_message.content[:100]}...")
+            # 将最终回答也加入历史
+            updated_messages.append(final_message)
             
             return {
                 'success': True,
@@ -95,52 +94,13 @@ class FunctionCallHandler:
                 'function_name': function_name,
                 'arguments': function_args,
                 'final_answer': final_message.content,
+                'updated_messages': updated_messages,
                 'raw_response': final_message
             }
             
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
-            }
-    
-    def call_function(self, messages, tools, temperature=0):
-        """
-        简化版 Function Call（保持向后兼容）
-        只做一次调用，直接返回参数
-        """
-        try:
-            response = self.client.chat.completions.create(
-                model="deepseek-chat",
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                temperature=temperature
-            )
-            
-            message = response.choices[0].message
-            
-            if not message.tool_calls:
-                return {
-                    'success': False,
-                    'error': '模型未调用函数',
-                    'raw_response': message.content
-                }
-            
-            tool_call = message.tool_calls[0]
-            function_name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
-            
-            return {
-                'success': True,
-                'function_name': function_name,
-                'arguments': arguments,
-                'reasoning': arguments.get('reasoning', ''),
-                'raw_response': message
-            }
-            
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
+                'error': str(e),
+                'updated_messages': messages
             }

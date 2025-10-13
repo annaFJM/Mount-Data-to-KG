@@ -1,0 +1,61 @@
+2025-10-13 11:32:03 - INFO - 日志文件已创建: logs/mount_log_20251013_113203.log
+2025-10-13 11:32:03 - INFO - 系统启动
+2025-10-13 11:32:03 - INFO - 读取数据文件: /home/thl/2025Fall/Mount-Data-to-KG/project/data/high_entropy_alloy.json
+2025-10-13 11:32:03 - INFO - 共加载 3 条材料数据
+2025-10-13 11:32:03 - INFO - 连接Neo4j数据库
+2025-10-13 11:32:03 - INFO - 
+开始批量处理 3 条材料数据
+
+2025-10-13 11:32:03 - INFO - 
+======================================================================
+2025-10-13 11:32:03 - INFO - 开始处理材料 #0
+2025-10-13 11:32:03 - INFO - ======================================================================
+2025-10-13 11:32:03 - INFO - 
+【层级 1】当前节点: 材料
+2025-10-13 11:32:03 - ERROR - 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - DEBUG - Traceback (most recent call last):
+  File "/home/thl/2025Fall/Mount-Data-to-KG/project/main.py", line 55, in process_single_material
+    if is_special_node(node_info):
+NameError: name 'is_special_node' is not defined
+
+2025-10-13 11:32:03 - ERROR - 【处理失败】材料索引 0: 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - INFO - 
+======================================================================
+2025-10-13 11:32:03 - INFO - 开始处理材料 #1
+2025-10-13 11:32:03 - INFO - ======================================================================
+2025-10-13 11:32:03 - INFO - 
+【层级 1】当前节点: 材料
+2025-10-13 11:32:03 - ERROR - 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - DEBUG - Traceback (most recent call last):
+  File "/home/thl/2025Fall/Mount-Data-to-KG/project/main.py", line 55, in process_single_material
+    if is_special_node(node_info):
+NameError: name 'is_special_node' is not defined
+
+2025-10-13 11:32:03 - ERROR - 【处理失败】材料索引 1: 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - INFO - 
+======================================================================
+2025-10-13 11:32:03 - INFO - 开始处理材料 #2
+2025-10-13 11:32:03 - INFO - ======================================================================
+2025-10-13 11:32:03 - INFO - 
+【层级 1】当前节点: 材料
+2025-10-13 11:32:03 - ERROR - 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - DEBUG - Traceback (most recent call last):
+  File "/home/thl/2025Fall/Mount-Data-to-KG/project/main.py", line 55, in process_single_material
+    if is_special_node(node_info):
+NameError: name 'is_special_node' is not defined
+
+2025-10-13 11:32:03 - ERROR - 【处理失败】材料索引 2: 处理过程异常: name 'is_special_node' is not defined
+2025-10-13 11:32:03 - INFO - 
+保存结果文件
+2025-10-13 11:32:03 - INFO - 
+======================================================================
+2025-10-13 11:32:03 - INFO - 处理完成！
+2025-10-13 11:32:03 - INFO -   总计: 3 条
+2025-10-13 11:32:03 - INFO -   成功: 0 条
+2025-10-13 11:32:03 - INFO -   失败: 3 条
+2025-10-13 11:32:03 - INFO - ======================================================================
+2025-10-13 11:32:03 - INFO - 
+日志文件: logs/mount_log_20251013_113203.log
+2025-10-13 11:32:03 - INFO - 结果文件: results/mount_result_20251013_113203.json
+2025-10-13 11:32:03 - INFO - 
+======================================================================

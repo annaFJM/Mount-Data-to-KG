@@ -1,26 +1,25 @@
 """
-主程序 - 材料知识图谱自动挂载系统（Function Call 版本）
+主程序 - 材料知识图谱自动挂载系统（无历史记录版本）
 """
 from config import (
     NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD,
     DATA_FILE_PATH, ROOT_ELEMENT_ID, ROOT_NAME,
-    MAX_CLASSIFICATION_DEPTH
+    MAX_CONVERSATION_ROUNDS, ENTITY_SIMILARITY_THRESHOLD
 )
-from data_loader import load_all_materials
+from data_loader import load_all_materials, format_material_for_prompt
 from neo4j_connector import Neo4jConnector
 from classifier import (
-    is_special_node, 
-    classify_material_with_function_call,
-    select_instance_with_function_call
+    build_tools_for_class_node,
+    build_tools_for_entity_selection
 )
-from node_mounter import mount_material_node
+from function_call_handler import FunctionCallHandler
 from logger import MountLogger
 from result_writer import ResultWriter
 
 
 def process_single_material(material_data, material_index, neo4j_conn, logger):
     """
-    处理单条材料数据
+    处理单条材料数据 - 每次调用都是新对话
     
     Args:
         material_data: 材料数据字典
@@ -39,133 +38,266 @@ def process_single_material(material_data, material_index, neo4j_conn, logger):
     current_element_id = ROOT_ELEMENT_ID
     current_name = ROOT_NAME
     classification_path = [{'name': ROOT_NAME, 'elementId': ROOT_ELEMENT_ID}]
-    depth = 0
+    handler = FunctionCallHandler()
     
-    try:
-        # ===== 逻辑1：循环层级分类 =====
-        while depth < MAX_CLASSIFICATION_DEPTH:
-            depth += 1
-            logger.info(f"\n【层级 {depth}】当前节点: {current_name}")
+    # 格式化材料信息
+    material_str = format_material_for_prompt(material_data)
+    
+    # 多轮对话循环
+    for round_num in range(1, MAX_CONVERSATION_ROUNDS + 1):
+        logger.info(f"\n【轮次 {round_num}】当前节点: {current_name}")
+        
+        try:
+            # 获取当前节点的labels
+            labels = neo4j_conn.get_node_labels(current_element_id)
+            logger.debug(f"节点labels: {labels}")
             
-            # 检查是否为特殊节点
-            node_info = {'name': current_name, 'elementId': current_element_id}
-            if is_special_node(node_info):
-                logger.info(f"✅ 检测到特殊节点: {current_name}")
-                break
-            
-            # 获取子节点
-            children, direction = neo4j_conn.get_children_smart(current_element_id)
-            
-            if not children:
-                # 到达叶子节点
-                error_msg = f"节点 '{current_name}' 没有子节点（叶子节点）"
+            if not labels:
+                error_msg = f"无法获取节点 '{current_name}' 的labels"
                 logger.error(error_msg)
                 return {'success': False, 'error': error_msg}
             
-            logger.debug(f"找到 {len(children)} 个子节点（方向: {direction}）")
+            # 根据节点类型构建tools
+            if 'Class' in labels:
+                # 在Class节点
+                logger.debug("当前在Class节点，构建导航工具")
+                tools, available_functions, helper_data = build_tools_for_class_node(
+                    current_element_id, current_name, neo4j_conn
+                )
+                
+                # 构建本轮的独立消息
+                system_prompt = f"""你是材料知识图谱的导航助手。
+
+当前位置：{current_name}
+
+任务：根据材料特征，选择最合适的下一步操作。
+
+规则：
+1. 如果可用函数中有 navigate_outbound，**必须优先**调用它移动到子分类
+2. 只有当**没有 navigate_outbound**（没有更细的子分类）时，才调用 navigate_inbound
+
+材料信息：
+{material_str}
+
+请选择合适的函数。"""
+
+                messages = [{"role": "user", "content": system_prompt}]
+                
+            elif 'Entity' in labels:
+                # 在Entity节点（理论上不应该到这里）
+                logger.debug("当前在Entity节点，只能挂载")
+                tools, available_functions = build_tools_for_entity_selection(
+                    entities=[{'name': current_name, 'elementId': current_element_id}],
+                    need_similarity=False,
+                    current_element_id=current_element_id,
+                    material_data=material_data,
+                    neo4j_conn=neo4j_conn
+                )
+                
+                system_prompt = f"""直接挂载材料到当前Entity节点。
+
+目标节点：{current_name}
+材料信息：{material_str}
+
+调用 mount_to_entity 完成挂载。"""
+
+                messages = [{"role": "user", "content": system_prompt}]
             
-            # 构建分类信息
-            subtype_info = neo4j_conn.build_classification_info(
-                current_element_id,
-                current_name,
-                use_inbound_for_examples=(direction == 'inbound')
+            else:
+                error_msg = f"节点 '{current_name}' 的labels异常: {labels}"
+                logger.error(error_msg)
+                return {'success': False, 'error': error_msg}
+            
+            # 调用LLM（每次都是新对话）
+            logger.debug(f"调用LLM，可用函数: {list(available_functions.keys())}")
+            result = handler.call_function_standard(
+                messages, tools, available_functions, temperature=0
             )
             
-            if not subtype_info:
-                error_msg = f"无法获取节点 '{current_name}' 的分类信息"
+            if not result['success']:
+                error_msg = f"Function call 失败: {result.get('error')}"
                 logger.error(error_msg)
                 return {'success': False, 'error': error_msg}
             
-            # 调用 function call 分类
-            candidates = list(subtype_info.keys())
-            classification, element_id, reasoning = classify_material_with_function_call(
-                material_data, current_name, subtype_info, logger
-            )
+            # 提取函数执行结果
+            func_result = result['result']
+            function_name = result['function_name']
             
-            if not classification:
-                error_msg = f"层级 {depth} 分类失败"
+            logger.info(f"✅ 调用函数: {function_name}")
+            logger.debug(f"函数返回: {func_result}")
+            
+            # 根据action处理结果
+            action = func_result.get('action')
+            
+            if action == 'move':
+                # 移动到新节点
+                new_element_id = func_result['new_element_id']
+                new_name = func_result['to_node']
+                reasoning = func_result.get('reasoning', '')
+                
+                logger.info(f"  移动: {current_name} → {new_name}")
+                logger.debug(f"  理由: {reasoning}")
+                
+                # 更新当前位置
+                current_element_id = new_element_id
+                current_name = new_name
+                classification_path.append({'name': current_name, 'elementId': current_element_id})
+                
+                # 继续下一轮
+                continue
+            
+            elif action == 'no_entities':
+                # 当前节点下没有Entity
+                logger.warning(f"  ⚠️  节点 '{current_name}' 下没有Entity节点")
+                
+                # 检查是否有出边Class节点
+                outbound_nodes = neo4j_conn.get_outbound_class_nodes(current_element_id)
+                
+                if outbound_nodes:
+                    # 有出边但LLM没看到 - 说明是代码逻辑问题
+                    error_msg = f"节点 '{current_name}' 有 {len(outbound_nodes)} 个子分类但未提供给LLM"
+                    logger.error(f"  ❌ {error_msg}")
+                    logger.debug(f"  子分类: {[n['name'] for n in outbound_nodes]}")
+                    return {'success': False, 'error': error_msg}
+                else:
+                    # 既没有出边也没有Entity - 这是数据问题
+                    error_msg = f"节点 '{current_name}' 既没有子分类也没有Entity实例，无法继续"
+                    logger.error(f"  ❌ {error_msg}")
+                    return {'success': False, 'error': error_msg}
+            
+            elif action == 'check_entities':
+                # 查看Entity节点
+                entity_count = func_result['entity_count']
+                entities = func_result['entities']
+                need_similarity = func_result['need_similarity_search']
+                
+                logger.info(f"  找到 {entity_count} 个Entity节点")
+                
+                if entity_count == 0:
+                    error_msg = "没有可用的Entity节点"
+                    logger.error(error_msg)
+                    return {'success': False, 'error': error_msg}
+                
+                # 如果需要相似度搜索
+                if need_similarity:
+                    logger.info(f"  Entity数量较多，开始相似度搜索...")
+                    
+                    # 构建工具（包含相似度搜索）
+                    tools_entity, funcs_entity = build_tools_for_entity_selection(
+                        entities, need_similarity, current_element_id, material_data, neo4j_conn
+                    )
+                    
+                    # 调用相似度搜索
+                    system_prompt_sim = f"""从 {entity_count} 个Entity中筛选top5最相似的材料。
+
+材料信息：{material_str}
+
+调用 get_similar_materials 筛选。"""
+                    
+                    messages_sim = [{"role": "user", "content": system_prompt_sim}]
+                    
+                    result_sim = handler.call_function_standard(
+                        messages_sim, tools_entity, funcs_entity, temperature=0
+                    )
+                    
+                    if result_sim['success']:
+                        func_result_sim = result_sim['result']
+                        if func_result_sim.get('action') == 'filter':
+                            top5 = func_result_sim['top5']
+                            logger.info(f"  相似度筛选完成，top5:")
+                            for i, item in enumerate(top5, 1):
+                                logger.info(f"    {i}. {item['name']} (相似度: {item['similarity']:.4f})")
+                            
+                            # 用top5替换entities
+                            entities = top5
+                            need_similarity = False
+                
+                # 构建挂载工具（基于筛选后的entities）
+                tools_mount, funcs_mount = build_tools_for_entity_selection(
+                    entities, False, current_element_id, material_data, neo4j_conn
+                )
+                
+                # 构建Entity选择提示
+                entity_list = "\n".join([
+                    f"{i}. {e['name']} (ID: {e['elementId']})" + 
+                    (f" - 相似度: {e.get('similarity', 0):.4f}" if 'similarity' in e else "")
+                    for i, e in enumerate(entities[:10], 1)
+                ])
+                
+                system_prompt_mount = f"""选择最合适的Entity节点进行挂载。
+
+可选Entity节点：
+{entity_list}
+
+材料信息：{material_str}
+
+调用 mount_to_entity 完成挂载。请选择最匹配的Entity的elementId。"""
+                
+                messages_mount = [{"role": "user", "content": system_prompt_mount}]
+                
+                result_mount = handler.call_function_standard(
+                    messages_mount, tools_mount, funcs_mount, temperature=0
+                )
+                
+                if not result_mount['success']:
+                    error_msg = f"挂载失败: {result_mount.get('error')}"
+                    logger.error(error_msg)
+                    return {'success': False, 'error': error_msg}
+                
+                func_result_mount = result_mount['result']
+                
+                if func_result_mount.get('action') == 'mount':
+                    # 挂载成功！
+                    logger.info(f"  ✅ 挂载成功！")
+                    logger.info(f"  新节点: {func_result_mount['mounted_node_name']}")
+                    logger.info(f"  目标: {func_result_mount['target_name']}")
+                    
+                    mount_info = {
+                        'success': True,
+                        'node_id': func_result_mount['mounted_node_id'],
+                        'node_name': func_result_mount['mounted_node_name'],
+                        'mounted_at': func_result_mount['mounted_at'],
+                        'target_name': func_result_mount['target_name'],
+                        'target_id': func_result_mount['target_element_id']
+                    }
+                    
+                    # 记录完整路径
+                    path_names = [node['name'] for node in classification_path]
+                    logger.info(f"  分类路径: {' → '.join(path_names)}")
+                    
+                    return {
+                        'success': True,
+                        'classification_path': classification_path,
+                        'mount_info': mount_info
+                    }
+                else:
+                    error_msg = "挂载操作未返回mount action"
+                    logger.error(error_msg)
+                    return {'success': False, 'error': error_msg}
+            
+            else:
+                error_msg = f"未知的action: {action}"
                 logger.error(error_msg)
                 return {'success': False, 'error': error_msg}
-            
-            # 记录分类结果
-            logger.log_classification(depth, current_name, candidates, classification, reasoning)
-            
-            # 更新当前节点
-            current_name = classification
-            current_element_id = element_id
-            classification_path.append({'name': current_name, 'elementId': current_element_id})
         
-        # 检查是否超过最大深度
-        if depth >= MAX_CLASSIFICATION_DEPTH:
-            error_msg = f"超过最大分类深度 {MAX_CLASSIFICATION_DEPTH}"
+        except Exception as e:
+            error_msg = f"轮次 {round_num} 异常: {str(e)}"
             logger.error(error_msg)
+            import traceback
+            logger.debug(traceback.format_exc())
             return {'success': False, 'error': error_msg}
-        
-        # ===== 逻辑2：特殊节点实例选择 =====
-        logger.info(f"\n【特殊分类】开始为 '{current_name}' 选择具体实例")
-        
-        # 获取实例信息
-        instance_info = neo4j_conn.get_instance_info_with_description(current_element_id)
-        
-        if not instance_info:
-            error_msg = f"特殊节点 '{current_name}' 没有可选实例"
-            logger.error(error_msg)
-            return {'success': False, 'error': error_msg}
-        
-        # 调用 function call 选择实例
-        candidates = list(instance_info.keys())
-        instance_name, instance_element_id, reasoning = select_instance_with_function_call(
-            material_data, current_name, instance_info, logger
-        )
-        
-        if not instance_name:
-            error_msg = "实例选择失败"
-            logger.error(error_msg)
-            return {'success': False, 'error': error_msg}
-        
-        # 记录特殊分类结果
-        logger.log_special_classification(current_name, candidates, instance_name, reasoning)
-        
-        # 更新目标节点
-        target_name = instance_name
-        target_element_id = instance_element_id
-        classification_path.append({'name': target_name, 'elementId': target_element_id})
-        
-        # ===== 挂载节点 =====
-        logger.info(f"\n【挂载】挂载到目标节点: {target_name}")
-        
-        mount_info = mount_material_node(
-            neo4j_conn, material_data, target_element_id, target_name
-        )
-        
-        if not mount_info or not mount_info['success']:
-            error_msg = "节点挂载失败"
-            logger.error(error_msg)
-            return {'success': False, 'error': error_msg}
-        
-        # 记录挂载结果
-        path_names = [node['name'] for node in classification_path]
-        logger.log_mount(mount_info['node_name'], target_name, path_names)
-        
-        return {
-            'success': True,
-            'classification_path': classification_path,
-            'mount_info': mount_info
-        }
-        
-    except Exception as e:
-        error_msg = f"处理过程异常: {str(e)}"
-        logger.error(error_msg)
-        import traceback
-        logger.debug(traceback.format_exc())
-        return {'success': False, 'error': error_msg}
+    
+    # 超过最大轮次
+    error_msg = f"超过最大对话轮次 {MAX_CONVERSATION_ROUNDS}"
+    logger.error(error_msg)
+    return {'success': False, 'error': error_msg}
 
 
 def main():
     """主函数 - 批量处理"""
     
     print("="*70)
-    print("材料知识图谱自动挂载系统 (Function Call 版本)")
+    print("材料知识图谱自动挂载系统 (无历史记录版本)")
     print("="*70)
     
     # 初始化日志和结果记录器

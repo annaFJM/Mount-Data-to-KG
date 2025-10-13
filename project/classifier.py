@@ -1,279 +1,183 @@
 """
-分类器模块 - 标准 Function Call 实现
+分类器模块 - 动态构建tools（修改版）
 """
-import json
 from functools import partial
-from config import SPECIAL_NODES
-from function_call_handler import FunctionCallHandler
-from data_loader import format_material_for_prompt
-from material_functions import classify_to_subtype, select_instance
+from material_functions import (
+    navigate_outbound,
+    navigate_inbound,
+    get_similar_materials,
+    mount_to_entity
+)
 
 
-def is_special_node(node_info):
+def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
     """
-    判断是否为特殊节点（需要特殊分类）
+    为Class节点构建可用工具（函数1、2）
     
     Args:
-        node_info: 节点信息字典 {name, elementId, properties (可选)}
+        current_element_id: 当前Class节点的elementId
+        current_name: 当前Class节点名称
+        neo4j_conn: Neo4j连接器
     
     Returns:
-        bool: 是否为特殊节点
+        tuple: (tools列表, available_functions字典, 辅助数据字典)
     """
-    node_name = node_info.get('name', '')
-    return node_name in SPECIAL_NODES
-
-
-def build_classification_tool(parent_name, subtype_info):
-    """
-    动态构建分类函数定义
+    # 获取出边Class节点
+    outbound_nodes = neo4j_conn.get_outbound_class_nodes(current_element_id)
     
-    Args:
-        parent_name: 父节点名称
-        subtype_info: 子类型信息 {子类名: {elementId, examples}}
+    tools = []
+    available_functions = {}
+    helper_data = {'outbound_nodes': outbound_nodes}
     
-    Returns:
-        list: tools 定义
-    """
-    candidates = list(subtype_info.keys())
+    # 函数1：导航到出边节点（如果有出边Class节点）
+    if outbound_nodes:
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": "navigate_outbound",
+                "description": f"从当前节点'{current_name}'移动到下一级Class节点。选择最符合材料特征的子类别。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "next_node_name": {
+                            "type": "string",
+                            "enum": [node['name'] for node in outbound_nodes],
+                            "description": f"选择下一个要移动到的Class节点。可用选项: {', '.join([n['name'] for n in outbound_nodes])}"
+                        },
+                        "reasoning": {
+                            "type": "string",
+                            "description": "为什么选择这个节点？根据材料的成分、性质等特征说明理由。"
+                        }
+                    },
+                    "required": ["next_node_name", "reasoning"]
+                }
+            }
+        })
+        
+        # 绑定函数
+        available_functions['navigate_outbound'] = partial(
+            navigate_outbound,
+            current_element_id=current_element_id,
+            current_name=current_name,
+            available_nodes=outbound_nodes,
+            neo4j_conn=neo4j_conn
+        )
     
-    tool = {
+    # 函数2：查看入边Entity节点（总是可用，但要根据是否有出边调整描述）
+    if outbound_nodes:
+        # 有出边Class节点 - 不建议调用此函数
+        inbound_description = f"查看'{current_name}'下的具体材料实例（Entity节点）。⚠️ 警告：当前还有子分类可用，建议先使用 navigate_outbound 继续细分。"
+    else:
+        # 没有出边Class节点 - 这是唯一选择
+        inbound_description = f"查看'{current_name}'下的具体材料实例（Entity节点）。当前已到达分类树的叶子节点，没有更细的子分类。"
+    
+    tools.append({
         "type": "function",
         "function": {
-            "name": "classify_to_subtype",
-            "description": f"将材料分类到 {parent_name} 的某个子类型。此函数会验证分类结果并返回详细信息。",
+            "name": "navigate_inbound",
+            "description": inbound_description,
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "subtype": {
-                        "type": "string",
-                        "enum": candidates,
-                        "description": f"选择一个 {parent_name} 的子类型"
-                    },
                     "reasoning": {
                         "type": "string",
-                        "description": "分类理由（根据材料成分、性质等判断）"
+                        "description": "为什么要查看Entity节点？"
                     }
                 },
-                "required": ["subtype", "reasoning"]
+                "required": ["reasoning"]
             }
         }
-    }
+    })
     
-    return [tool]
+    available_functions['navigate_inbound'] = partial(
+        navigate_inbound,
+        current_element_id=current_element_id,
+        current_name=current_name,
+        neo4j_conn=neo4j_conn
+    )
+    
+    return tools, available_functions, helper_data
 
 
-def build_instance_selection_tool(special_node_name, instance_info):
+def build_tools_for_entity_selection(entities, need_similarity, current_element_id,
+                                     material_data, neo4j_conn):
     """
-    动态构建实例选择函数定义
+    为Entity选择构建可用工具（函数3、4）
     
     Args:
-        special_node_name: 特殊节点名称（如"高熵合金"）
-        instance_info: 实例信息 {实例名: {elementId, description (可选)}}
+        entities: Entity节点列表
+        need_similarity: 是否需要相似度搜索
+        current_element_id: 当前Class节点的elementId
+        material_data: 待挂载的材料数据
+        neo4j_conn: Neo4j连接器
     
     Returns:
-        list: tools 定义
+        tuple: (tools列表, available_functions字典)
     """
-    candidates = list(instance_info.keys())
+    tools = []
+    available_functions = {}
     
-    # 构建候选描述
-    enum_descriptions = []
-    for inst_name, info in instance_info.items():
-        desc = info.get('description', inst_name)
-        enum_descriptions.append(f"{inst_name}: {desc}")
+    # 函数3：相似度搜索（仅在Entity数量>=20时提供）
+    if need_similarity:
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": "get_similar_materials",
+                "description": f"从 {len(entities)}+ 个Entity节点中筛选出top5最相似的材料牌号。基于成分比重的相似度计算。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reasoning": {
+                            "type": "string",
+                            "description": "为什么需要使用相似度筛选？"
+                        }
+                    },
+                    "required": ["reasoning"]
+                }
+            }
+        })
+        
+        available_functions['get_similar_materials'] = partial(
+            get_similar_materials,
+            current_element_id=current_element_id,
+            material_data=material_data,
+            neo4j_conn=neo4j_conn
+        )
     
-    tool = {
+    # 函数4：挂载材料（总是提供）
+    # 如果Entity数量较少，提供所有选项；否则建议先用相似度搜索
+    if not need_similarity and len(entities) > 0:
+        # Entity数量少，直接列举所有选项
+        description = f"将材料挂载到选定的Entity节点。当前有 {len(entities)} 个可选Entity。"
+    else:
+        description = "将材料挂载到选定的Entity节点。建议先使用相似度搜索筛选后再挂载。"
+    
+    tools.append({
         "type": "function",
         "function": {
-            "name": "select_instance",
-            "description": f"从 {special_node_name} 的具体实例中选择最匹配的一个。此函数会验证选择并返回详细信息。",
+            "name": "mount_to_entity",
+            "description": description,
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "instance": {
+                    "target_element_id": {
                         "type": "string",
-                        "enum": candidates,
-                        "description": f"选择最匹配的 {special_node_name} 实例。候选: " + "; ".join(enum_descriptions)
+                        "description": "选择的Entity节点的elementId（从之前的查询结果中获取）"
                     },
                     "reasoning": {
                         "type": "string",
-                        "description": "选择理由（根据材料成分、性质等判断）"
+                        "description": "为什么选择这个Entity节点？基于材料特征的匹配说明。"
                     }
                 },
-                "required": ["instance", "reasoning"]
+                "required": ["target_element_id", "reasoning"]
             }
         }
-    }
+    })
     
-    return [tool]
-
-
-def classify_material_with_function_call(material_data, parent_name, subtype_info, logger):
-    """
-    使用标准 Function Call 进行材料分类（两次调用）
-    
-    Args:
-        material_data: 材料数据字典
-        parent_name: 父节点名称
-        subtype_info: 子类型信息
-        logger: 日志记录器
-    
-    Returns:
-        tuple: (分类结果名称, 分类结果elementId, 分类理由) 或 (None, None, None)
-    """
-    logger.debug(f"开始分类，父节点: {parent_name}")
-    
-    # 构建 tools
-    tools = build_classification_tool(parent_name, subtype_info)
-    
-    # 构建 messages
-    system_prompt = f"""你是材料知识图谱的智能分类器。
-
-当前任务：判断材料属于"{parent_name}"的哪个子类型。
-
-子类型及其例子：
-"""
-    for subtype_name, info in subtype_info.items():
-        system_prompt += f"\n- {subtype_name}"
-        if info['examples']:
-            examples_str = ', '.join(info['examples'][:5])
-            system_prompt += f"\n  例子: {examples_str}"
-    
-    system_prompt += "\n\n请根据材料的成分、性质和用途进行判断。"
-    
-    material_str = format_material_for_prompt(material_data)
-    user_prompt = f"""请分析以下材料数据：
-
-```json
-{material_str}
-```
-
-请调用 classify_to_subtype 函数，选择最合适的子类型。
-"""
-    
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
-    
-    # 准备可执行的函数
-    # 使用 partial 绑定参数（注意：函数名必须与 tools 中的 name 一致）
-    classify_func = partial(
-        classify_to_subtype,
+    available_functions['mount_to_entity'] = partial(
+        mount_to_entity,
         material_data=material_data,
-        parent_name=parent_name,
-        subtype_info=subtype_info
+        neo4j_conn=neo4j_conn
     )
     
-    available_functions = {
-        'classify_to_subtype': classify_func
-    }
-    
-    # 调用标准 function call
-    handler = FunctionCallHandler()
-    result = handler.call_function_standard(messages, tools, available_functions)
-    
-    if not result['success']:
-        logger.error(f"Function call 失败: {result.get('error')}")
-        return None, None, None
-    
-    # 提取函数执行结果
-    func_result = result['result']
-    
-    if not func_result['success']:
-        logger.error(f"分类验证失败: {func_result.get('error')}")
-        return None, None, None
-    
-    classification = func_result['classification']
-    element_id = func_result['element_id']
-    reasoning = func_result['reasoning']
-    
-    logger.debug(f"分类成功: {classification}")
-    logger.debug(f"理由: {reasoning}")
-    logger.debug(f"LLM 最终回答: {result['final_answer']}")
-    
-    return classification, element_id, reasoning
-
-
-def select_instance_with_function_call(material_data, special_node_name, 
-                                      instance_info, logger):
-    """
-    使用标准 Function Call 选择具体实例（两次调用）
-    
-    Args:
-        material_data: 材料数据
-        special_node_name: 特殊节点名称
-        instance_info: 实例信息
-        logger: 日志记录器
-    
-    Returns:
-        tuple: (实例名称, elementId, 选择理由) 或 (None, None, None)
-    """
-    logger.debug(f"开始选择实例，特殊节点: {special_node_name}")
-    
-    # 构建 tools
-    tools = build_instance_selection_tool(special_node_name, instance_info)
-    
-    # 构建 messages
-    system_prompt = f"""你是材料知识图谱的智能分类器。
-
-当前任务：将材料分配到"{special_node_name}"的某个具体实例。
-
-可选实例：
-"""
-    for inst_name, info in instance_info.items():
-        desc = info.get('description', '无详细描述')
-        system_prompt += f"\n- {inst_name}: {desc}"
-    
-    system_prompt += "\n\n请根据材料的成分特征选择最匹配的实例。"
-    
-    material_str = format_material_for_prompt(material_data)
-    user_prompt = f"""请分析以下材料数据：
-
-```json
-{material_str}
-```
-
-请调用 select_instance 函数，选择最匹配的实例。
-"""
-    
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
-    
-    # 准备可执行的函数
-    select_func = partial(
-        select_instance,
-        material_data=material_data,
-        special_node_name=special_node_name,
-        instance_info=instance_info
-    )
-    
-    available_functions = {
-        'select_instance': select_func
-    }
-    
-    # 调用标准 function call
-    handler = FunctionCallHandler()
-    result = handler.call_function_standard(messages, tools, available_functions)
-    
-    if not result['success']:
-        logger.error(f"Function call 失败: {result.get('error')}")
-        return None, None, None
-    
-    # 提取函数执行结果
-    func_result = result['result']
-    
-    if not func_result['success']:
-        logger.error(f"实例选择验证失败: {func_result.get('error')}")
-        return None, None, None
-    
-    instance = func_result['selected_instance']
-    element_id = func_result['element_id']
-    reasoning = func_result['reasoning']
-    
-    logger.debug(f"选择成功: {instance}")
-    logger.debug(f"理由: {reasoning}")
-    logger.debug(f"LLM 最终回答: {result['final_answer']}")
-    
-    return instance, element_id, reasoning
+    return tools, available_functions

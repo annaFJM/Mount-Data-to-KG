@@ -1,0 +1,36 @@
+{
+  "deleted_at": "2025-10-13T05:03:20.981893",
+  "source_file": "results/mount_result_20251013_045641.json",
+  "total": 3,
+  "success": 3,
+  "failed": 0,
+  "deleted_nodes": [
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28402",
+      "node_name": "Material_89e30c05170f",
+      "mounted_at": "2025-10-13T04:58:10.722089",
+      "target_name": "高熵材料",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:22755",
+      "classification_path": "材料 → 金属材料 → 特殊用途金属材料 → 高熵合金 → 高熵材料",
+      "saved_at": "2025-10-13T05:03:18.462153"
+    },
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28403",
+      "node_name": "Material_fa00f90f58cf",
+      "mounted_at": "2025-10-13T04:59:28.950430",
+      "target_name": "高熵材料",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:22755",
+      "classification_path": "材料 → 金属材料 → 特殊用途金属材料 → 高熵合金 → 高熵材料",
+      "saved_at": "2025-10-13T05:03:18.462183"
+    },
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28404",
+      "node_name": "Material_0ca8bba65b78",
+      "mounted_at": "2025-10-13T05:00:50.029965",
+      "target_name": "高熵材料",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:22755",
+      "classification_path": "材料 → 金属材料 → 特殊用途金属材料 → 高熵合金 → 高熵材料",
+      "saved_at": "2025-10-13T05:03:18.462199"
+    }
+  ]
+}

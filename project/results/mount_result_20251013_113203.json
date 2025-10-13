@@ -1,0 +1,98 @@
+{
+  "total": 3,
+  "success": 0,
+  "failed": 3,
+  "generated_at": "2025-10-13T11:32:03.413247",
+  "results": [
+    {
+      "status": "error",
+      "material_index": 0,
+      "timestamp": "2025-10-13T11:32:03.405794",
+      "error": "处理过程异常: name 'is_special_node' is not defined",
+      "material_data": {
+        "_id": "674742c7f10142971f5cf026",
+        "_meta_id": 16609527,
+        "_tid": 1007,
+        "data": {
+          "成分比重": {
+            "Mn": 1.0,
+            "Fe": 1.0,
+            "Co": 1.0,
+            "Cu": 1.0,
+            "Nb": 2.0,
+            "Ni": 1.0
+          },
+          "预测硬度": 609.8682083530902,
+          "MGE18_标题": "Mn1Fe1Co1Ni1Cu1Nb2",
+          "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+          "MGE18_DOI": "None",
+          "MGE18_关键词": "硬度预测",
+          "MGE18_来源": "self-production",
+          "MGE18_引用": "",
+          "MGE18_数据生产者": "liuan",
+          "MGE18_数据生产机构": "ustb",
+          "MGE18_方法": ""
+        }
+      }
+    },
+    {
+      "status": "error",
+      "material_index": 1,
+      "timestamp": "2025-10-13T11:32:03.409436",
+      "error": "处理过程异常: name 'is_special_node' is not defined",
+      "material_data": {
+        "_id": "6742ab5cf10142971f2416c6",
+        "_meta_id": 12883863,
+        "_tid": 1007,
+        "data": {
+          "成分比重": {
+            "Mn": 1.0,
+            "Zr": 1.0,
+            "Ta": 1.0
+          },
+          "预测硬度": 563.4857095129887,
+          "MGE18_标题": "Mn1Zr1Ta1",
+          "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+          "MGE18_DOI": "None",
+          "MGE18_关键词": "硬度预测",
+          "MGE18_来源": "self-production",
+          "MGE18_引用": "",
+          "MGE18_数据生产者": "liuan",
+          "MGE18_数据生产机构": "ustb",
+          "MGE18_方法": ""
+        }
+      }
+    },
+    {
+      "status": "error",
+      "material_index": 2,
+      "timestamp": "2025-10-13T11:32:03.413029",
+      "error": "处理过程异常: name 'is_special_node' is not defined",
+      "material_data": {
+        "_id": "67467b38f10142971f536726",
+        "_meta_id": 15984631,
+        "_tid": 1007,
+        "data": {
+          "成分比重": {
+            "Ti": 1.0,
+            "V": 1.0,
+            "Cr": 2.0,
+            "Zr": 1.0,
+            "Nb": 1.0,
+            "Hf": 1.0
+          },
+          "预测硬度": 531.6856730956472,
+          "MGE18_标题": "Ti1V1Cr2Zr1Nb1Hf1",
+          "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+          "MGE18_DOI": "None",
+          "MGE18_关键词": "硬度预测",
+          "MGE18_来源": "self-production",
+          "MGE18_引用": "",
+          "MGE18_数据生产者": "liuan",
+          "MGE18_数据生产机构": "ustb",
+          "MGE18_方法": ""
+        }
+      }
+    }
+  ]
+}

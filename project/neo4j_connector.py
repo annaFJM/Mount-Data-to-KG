@@ -1,22 +1,15 @@
 """
-Neo4j数据库连接器 - 负责所有数据库操作
+Neo4j数据库连接器 - 负责所有数据库操作（修改版）
 """
 from neo4j import GraphDatabase
-import random
+import json
 
 
 class Neo4jConnector:
     """Neo4j数据库连接和操作类"""
     
     def __init__(self, uri, user, password):
-        """
-        初始化数据库连接
-        
-        Args:
-            uri: Neo4j连接URI
-            user: 用户名
-            password: 密码
-        """
+        """初始化数据库连接"""
         self.driver = None
         try:
             self.driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -31,155 +24,123 @@ class Neo4jConnector:
             self.driver.close()
             print("🔌 Neo4j 数据库连接已关闭。")
     
-    def get_child_nodes_by_element_id(self, parent_element_id, use_inbound=False):
+    def get_node_labels(self, element_id):
         """
-        通过elementId获取子节点
-        
-        Args:
-            parent_element_id: 父节点的elementId
-            use_inbound: True=使用入边(<-)，False=使用出边(->)
+        获取节点的labels
         
         Returns:
-            list: 子节点列表，每个元素是字典 {name, elementId}
+            list: ['Class'] 或 ['Entity'] 或 []
         """
         if self.driver is None:
             return []
         
         with self.driver.session() as session:
             try:
-                if use_inbound:
-                    # 使用入边查询
-                    query = """
-                    MATCH (a)<-[r]-(b)
-                    WHERE elementId(a) = $parent_id
-                    RETURN b.name as name, elementId(b) as elementId
-                    LIMIT 10
-                    """
-                else:
-                    # 使用出边查询
-                    query = """
-                    MATCH (a)-[r]->(b)
-                    WHERE elementId(a) = $parent_id
-                    RETURN b.name as name, elementId(b) as elementId
-                    LIMIT 10
-                    """
+                query = """
+                MATCH (n)
+                WHERE elementId(n) = $element_id
+                RETURN labels(n) as labels
+                """
+                result = session.run(query, element_id=element_id)
+                record = result.single()
                 
-                result = session.run(query, parent_id=parent_element_id)
-                nodes = [{"name": record["name"], "elementId": record["elementId"]} 
-                        for record in result]
-                return nodes
+                if record:
+                    return record['labels']
+                return []
             except Exception as e:
-                print(f"❌ 查询子节点时出错 (elementId={parent_element_id}): {e}")
+                print(f"❌ 获取节点labels时出错: {e}")
                 return []
     
-    def get_children_smart(self, parent_element_id):
+    def get_outbound_class_nodes(self, element_id):
         """
-        智能获取子节点：优先用出边，如果没结果则用入边
-        
-        Args:
-            parent_element_id: 父节点的elementId
+        获取出边指向的Class节点
         
         Returns:
-            tuple: (子节点列表, 方向类型 'outbound'/'inbound'/'none')
+            list: [{'name': '金属材料', 'elementId': '...'}]
         """
-        # 先尝试出边
-        children = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=False)
+        if self.driver is None:
+            return []
         
-        if children:
-            return children, 'outbound'
-        
-        # 出边无结果，尝试入边
-        children = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=True)
-        
-        if children:
-            print(f"⚠️  使用入边查询到 {len(children)} 个子节点")
-            return children, 'inbound'
-        
-        return [], 'none'
+        with self.driver.session() as session:
+            try:
+                query = """
+                MATCH (a)-[r]->(b:Class)
+                WHERE elementId(a) = $element_id
+                RETURN b.name as name, elementId(b) as elementId
+                LIMIT 20
+                """
+                result = session.run(query, element_id=element_id)
+                nodes = [
+                    {"name": record["name"], "elementId": record["elementId"]} 
+                    for record in result
+                ]
+                return nodes
+            except Exception as e:
+                print(f"❌ 获取出边Class节点时出错: {e}")
+                return []
     
-    def build_classification_info(self, parent_element_id, parent_name, use_inbound_for_examples=False):
+    def get_inbound_entity_nodes(self, element_id, limit=100):
         """
-        构建分类信息：获取父类的所有子类，以及每个子类的例子
-        
-        Args:
-            parent_element_id: 父节点的elementId
-            parent_name: 父节点的名称
-            use_inbound_for_examples: 查询例子时是否使用入边
+        获取入边指向的Entity节点
         
         Returns:
-            dict: {子类名: {elementId, examples}}
-        """
-        print(f"--- 正在从Neo4j获取 '{parent_name}' 的分类信息 ---")
-        
-        # 获取所有子类（始终使用出边）
-        subtypes = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=False)
-        
-        if not subtypes:
-            print(f"❌ 未找到 '{parent_name}' 的子类")
-            return {}
-        
-        print(f"✅ 找到 {len(subtypes)} 个子类: {', '.join([n['name'] for n in subtypes])}")
-        
-        # 为每个子类获取例子
-        subtype_info = {}
-        for subtype in subtypes:
-            subtype_name = subtype['name']
-            subtype_element_id = subtype['elementId']
-            
-            # 根据参数决定使用入边还是出边查询例子
-            examples = self.get_child_nodes_by_element_id(
-                subtype_element_id, 
-                use_inbound=use_inbound_for_examples
-            )
-            
-            subtype_info[subtype_name] = {
-                'elementId': subtype_element_id,
-                'examples': [ex['name'] for ex in examples[:10]]
+            dict: {
+                'count': 50,
+                'entities': [{'name': '...', 'elementId': '...', 'data': {...}}]
             }
-            
-            if subtype_info[subtype_name]['examples']:
-                example_str = ', '.join(subtype_info[subtype_name]['examples'][:5])
-                if len(subtype_info[subtype_name]['examples']) > 5:
-                    example_str += '...'
-                print(f"   - {subtype_name}: {example_str}")
-            else:
-                print(f"   - {subtype_name}: (无例子)")
-        
-        return subtype_info
-    
-    def get_instance_info_with_description(self, special_node_element_id):
         """
-        获取实例信息（带描述）
-        用于特殊分类
+        if self.driver is None:
+            return {'count': 0, 'entities': []}
         
-        Args:
-            special_node_element_id: 特殊节点的 elementId
+        with self.driver.session() as session:
+            try:
+                # 先查询总数
+                count_query = """
+                MATCH (a:Entity)-[r]->(b)
+                WHERE elementId(b) = $element_id
+                RETURN count(a) as total
+                """
+                count_result = session.run(count_query, element_id=element_id)
+                total = count_result.single()['total']
+                
+                # 查询具体节点（限制数量）
+                query = """
+                MATCH (a:Entity)-[r]->(b)
+                WHERE elementId(b) = $element_id
+                RETURN a.name as name, elementId(a) as elementId, a.data as data
+                LIMIT $limit
+                """
+                result = session.run(query, element_id=element_id, limit=limit)
+                
+                entities = []
+                for record in result:
+                    entity_data = None
+                    if record['data']:
+                        try:
+                            entity_data = json.loads(record['data'])
+                        except:
+                            entity_data = None
+                    
+                    entities.append({
+                        'name': record['name'],
+                        'elementId': record['elementId'],
+                        'data': entity_data
+                    })
+                
+                return {
+                    'count': total,
+                    'entities': entities
+                }
+            except Exception as e:
+                print(f"❌ 获取入边Entity节点时出错: {e}")
+                return {'count': 0, 'entities': []}
+    
+    def get_entity_data_by_element_id(self, element_id):
+        """
+        获取Entity节点的完整数据
         
         Returns:
-            dict: {实例名: {elementId, description}}
-        """
-        children, direction = self.get_children_smart(special_node_element_id)
-        
-        instance_info = {}
-        for child in children:
-            # 构建简单描述（后续可扩展为查询节点属性）
-            instance_info[child['name']] = {
-                'elementId': child['elementId'],
-                'description': f"{child['name']} 材料实例"
-            }
-        
-        return instance_info
-    
-    def get_random_neighbor_by_name(self, node_name):
-        """
-        通过节点名称查询，随机选择一个相邻节点（入边）
-        （保留此方法以兼容旧代码）
-        
-        Args:
-            node_name: 节点名称
-        
-        Returns:
-            dict: {name, elementId} 或 None
+            dict: 节点的data字段解析后的字典
         """
         if self.driver is None:
             return None
@@ -187,22 +148,19 @@ class Neo4jConnector:
         with self.driver.session() as session:
             try:
                 query = """
-                MATCH (a{name: $node_name})<-[r]-(b)
-                RETURN b.name as name, elementId(b) as elementId
+                MATCH (n:Entity)
+                WHERE elementId(n) = $element_id
+                RETURN n.data as data
                 """
+                result = session.run(query, element_id=element_id)
+                record = result.single()
                 
-                result = session.run(query, node_name=node_name)
-                neighbors = [{"name": record["name"], "elementId": record["elementId"]} 
-                            for record in result]
-                
-                if neighbors:
-                    selected = random.choice(neighbors)
-                    print(f"✅ 从 '{node_name}' 的 {len(neighbors)} 个相邻节点中随机选择: {selected['name']}")
-                    return selected
-                else:
-                    print(f"❌ 未找到 '{node_name}' 的相邻节点")
-                    return None
-                    
+                if record and record['data']:
+                    try:
+                        return json.loads(record['data'])
+                    except:
+                        return None
+                return None
             except Exception as e:
-                print(f"❌ 查询相邻节点时出错: {e}")
+                print(f"❌ 获取Entity数据时出错: {e}")
                 return None

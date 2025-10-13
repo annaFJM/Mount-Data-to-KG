@@ -20,7 +20,8 @@ ROOT_ELEMENT_ID = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
 ROOT_NAME = "材料"
 
 # ===== 新增配置 =====
-
+ENTITY_SIMILARITY_THRESHOLD = 20
+MAX_CONVERSATION_ROUNDS = 20
 # 特殊节点列表（需要特殊分类的节点）
 SPECIAL_NODES = ["高熵合金"]  # 后续可扩展
 

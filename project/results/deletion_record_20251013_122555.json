@@ -1,0 +1,36 @@
+{
+  "deleted_at": "2025-10-13T12:25:55.406197",
+  "source_file": "results/mount_result_20251013_115510.json",
+  "total": 3,
+  "success": 3,
+  "failed": 0,
+  "deleted_nodes": [
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28405",
+      "node_name": "Material_61c8257969e9",
+      "mounted_at": "2025-10-13T11:55:50.091064",
+      "target_name": "传统合金",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:8026",
+      "classification_path": "材料 → 金属材料 → 传统合金",
+      "saved_at": "2025-10-13T12:25:53.702557"
+    },
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28406",
+      "node_name": "Material_de7c7ba76f59",
+      "mounted_at": "2025-10-13T11:56:25.358948",
+      "target_name": "金属间化合物",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:19059",
+      "classification_path": "材料 → 金属材料 → 金属间化合物",
+      "saved_at": "2025-10-13T12:25:53.702580"
+    },
+    {
+      "node_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:28407",
+      "node_name": "Material_159672709407",
+      "mounted_at": "2025-10-13T11:57:00.837934",
+      "target_name": "金属间化合物",
+      "target_id": "4:bf9f3e2f-61c2-430f-be08-580850049dc8:19059",
+      "classification_path": "材料 → 金属材料 → 金属间化合物",
+      "saved_at": "2025-10-13T12:25:53.702590"
+    }
+  ]
+}
