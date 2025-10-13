@@ -6,7 +6,7 @@ import json
 
 def load_material_data(file_path, index=0):
     """
-    从JSON文件加载材料数据
+    从JSON文件加载单条材料数据
     
     Args:
         file_path: JSON文件路径
@@ -42,6 +42,41 @@ def load_material_data(file_path, index=0):
     except Exception as e:
         print(f"❌ 读取数据时发生错误: {e}")
         return None
+
+
+def load_all_materials(file_path):
+    """
+    从JSON文件加载所有材料数据
+    
+    Args:
+        file_path: JSON文件路径
+    
+    Returns:
+        list: 材料数据列表，失败返回空列表
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+            if isinstance(data, list):
+                print(f"✅ 成功读取 {len(data)} 条材料数据")
+                return data
+            elif isinstance(data, dict):
+                print(f"✅ 成功读取 1 条材料数据")
+                return [data]
+            else:
+                print("❌ JSON格式不符合预期")
+                return []
+                
+    except FileNotFoundError:
+        print(f"❌ 文件未找到: {file_path}")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON解析错误: {e}")
+        return []
+    except Exception as e:
+        print(f"❌ 读取数据时发生错误: {e}")
+        return []
 
 
 def format_material_for_prompt(material_data):

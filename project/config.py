@@ -10,21 +10,27 @@ NEO4J_PASSWORD = "thl123!@#"
 
 # DeepSeek API配置
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 # 数据文件路径
-DATA_FILE_PATH = "/home/thl/2025Fall/data/method2/high_entropy_alloy.json"
+DATA_FILE_PATH = "/home/thl/2025Fall/Mount-Data-to-KG/project/data/high_entropy_alloy.json"
 
 # 根节点配置
 ROOT_ELEMENT_ID = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
 ROOT_NAME = "材料"
 
-# 分类层级配置
-LAYER_CONFIGS = [
-    {"name": "第一层", "use_inbound": False},  # 材料 -> 材料类型
-    {"name": "第二层", "use_inbound": False},  # 金属材料 -> 子类型  
-    {"name": "第三层", "use_inbound": True},   # 特殊用途金属材料 -> 具体类型
-]
+# ===== 新增配置 =====
 
-# 特殊节点名称（需要特殊处理的节点）
-SPECIAL_NODE_NAME = "高熵合金"
+# 特殊节点列表（需要特殊分类的节点）
+SPECIAL_NODES = ["高熵合金"]  # 后续可扩展
+
+# 分类最大深度（防止死循环）
+MAX_CLASSIFICATION_DEPTH = 20
+
+# 日志配置
+LOG_DIR = "logs"
+LOG_FILE_PREFIX = "mount_log"  # 格式: mount_log_20250113_143025.log
+
+# 结果文件配置
+RESULT_DIR = "results"
+RESULT_FILE_PREFIX = "mount_result"  # 格式: mount_result_20250113_143025.json

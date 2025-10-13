@@ -72,6 +72,31 @@ class Neo4jConnector:
                 print(f"❌ 查询子节点时出错 (elementId={parent_element_id}): {e}")
                 return []
     
+    def get_children_smart(self, parent_element_id):
+        """
+        智能获取子节点：优先用出边，如果没结果则用入边
+        
+        Args:
+            parent_element_id: 父节点的elementId
+        
+        Returns:
+            tuple: (子节点列表, 方向类型 'outbound'/'inbound'/'none')
+        """
+        # 先尝试出边
+        children = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=False)
+        
+        if children:
+            return children, 'outbound'
+        
+        # 出边无结果，尝试入边
+        children = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=True)
+        
+        if children:
+            print(f"⚠️  使用入边查询到 {len(children)} 个子节点")
+            return children, 'inbound'
+        
+        return [], 'none'
+    
     def build_classification_info(self, parent_element_id, parent_name, use_inbound_for_examples=False):
         """
         构建分类信息：获取父类的所有子类，以及每个子类的例子
@@ -84,7 +109,7 @@ class Neo4jConnector:
         Returns:
             dict: {子类名: {elementId, examples}}
         """
-        print(f"\n--- 正在从Neo4j获取 '{parent_name}' (elementId={parent_element_id}) 的分类信息 ---")
+        print(f"--- 正在从Neo4j获取 '{parent_name}' 的分类信息 ---")
         
         # 获取所有子类（始终使用出边）
         subtypes = self.get_child_nodes_by_element_id(parent_element_id, use_inbound=False)
@@ -122,9 +147,33 @@ class Neo4jConnector:
         
         return subtype_info
     
+    def get_instance_info_with_description(self, special_node_element_id):
+        """
+        获取实例信息（带描述）
+        用于特殊分类
+        
+        Args:
+            special_node_element_id: 特殊节点的 elementId
+        
+        Returns:
+            dict: {实例名: {elementId, description}}
+        """
+        children, direction = self.get_children_smart(special_node_element_id)
+        
+        instance_info = {}
+        for child in children:
+            # 构建简单描述（后续可扩展为查询节点属性）
+            instance_info[child['name']] = {
+                'elementId': child['elementId'],
+                'description': f"{child['name']} 材料实例"
+            }
+        
+        return instance_info
+    
     def get_random_neighbor_by_name(self, node_name):
         """
         通过节点名称查询，随机选择一个相邻节点（入边）
+        （保留此方法以兼容旧代码）
         
         Args:
             node_name: 节点名称

@@ -10,6 +10,53 @@ from datetime import datetime
 DEFAULT_SAVE_FILE = "cleanup/new_data1.json"
 
 
+def extract_nodes_from_result_file(result_file_path):
+    """
+    从 results 文件中提取需要删除的节点信息
+    
+    Args:
+        result_file_path: result JSON 文件路径
+    
+    Returns:
+        list: 节点信息列表 [{node_id, node_name, target_name, mounted_at, classification_path}]
+    """
+    if not os.path.exists(result_file_path):
+        print(f"❌ 文件不存在: {result_file_path}")
+        return []
+    
+    try:
+        with open(result_file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        nodes = []
+        for result in data.get('results', []):
+            if result.get('status') == 'success':
+                mounted_node = result.get('mounted_node', {})
+                target_node = result.get('target_node', {})
+                classification_path = result.get('classification_path', [])
+                
+                # 构建分类路径字符串
+                path_str = ' → '.join([node['name'] for node in classification_path])
+                
+                node_info = {
+                    'node_id': mounted_node.get('element_id'),
+                    'node_name': mounted_node.get('name'),
+                    'mounted_at': mounted_node.get('mounted_at'),
+                    'target_name': target_node.get('name'),
+                    'target_id': target_node.get('element_id'),
+                    'classification_path': path_str,
+                    'saved_at': datetime.now().isoformat()
+                }
+                nodes.append(node_info)
+        
+        print(f"✅ 从 result 文件中提取到 {len(nodes)} 个节点")
+        return nodes
+        
+    except Exception as e:
+        print(f"❌ 提取节点信息时出错: {e}")
+        return []
+
+
 def save_mounted_node(mount_info, classification_path=None):
     """
     将挂载的节点信息保存到文件
