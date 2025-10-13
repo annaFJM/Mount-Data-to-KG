@@ -1,10 +1,12 @@
 """
-分类器模块 - 使用 Function Call 进行分类
+分类器模块 - 标准 Function Call 实现
 """
 import json
+from functools import partial
 from config import SPECIAL_NODES
 from function_call_handler import FunctionCallHandler
 from data_loader import format_material_for_prompt
+from material_functions import classify_to_subtype, select_instance
 
 
 def is_special_node(node_info):
@@ -17,12 +19,8 @@ def is_special_node(node_info):
     Returns:
         bool: 是否为特殊节点
     """
-    # 当前使用简单的名称匹配
-    # 后续可扩展为检查节点属性或其他特征
     node_name = node_info.get('name', '')
-    is_special = node_name in SPECIAL_NODES
-    
-    return is_special
+    return node_name in SPECIAL_NODES
 
 
 def build_classification_tool(parent_name, subtype_info):
@@ -42,7 +40,7 @@ def build_classification_tool(parent_name, subtype_info):
         "type": "function",
         "function": {
             "name": "classify_to_subtype",
-            "description": f"将材料分类到 {parent_name} 的某个子类型",
+            "description": f"将材料分类到 {parent_name} 的某个子类型。此函数会验证分类结果并返回详细信息。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -87,7 +85,7 @@ def build_instance_selection_tool(special_node_name, instance_info):
         "type": "function",
         "function": {
             "name": "select_instance",
-            "description": f"从 {special_node_name} 的具体实例中选择最匹配的一个",
+            "description": f"从 {special_node_name} 的具体实例中选择最匹配的一个。此函数会验证选择并返回详细信息。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -111,7 +109,7 @@ def build_instance_selection_tool(special_node_name, instance_info):
 
 def classify_material_with_function_call(material_data, parent_name, subtype_info, logger):
     """
-    使用 Function Call 进行材料分类
+    使用标准 Function Call 进行材料分类（两次调用）
     
     Args:
         material_data: 材料数据字典
@@ -157,28 +155,41 @@ def classify_material_with_function_call(material_data, parent_name, subtype_inf
         {"role": "user", "content": user_prompt}
     ]
     
-    # 调用 function call
+    # 准备可执行的函数
+    # 使用 partial 绑定参数（注意：函数名必须与 tools 中的 name 一致）
+    classify_func = partial(
+        classify_to_subtype,
+        material_data=material_data,
+        parent_name=parent_name,
+        subtype_info=subtype_info
+    )
+    
+    available_functions = {
+        'classify_to_subtype': classify_func
+    }
+    
+    # 调用标准 function call
     handler = FunctionCallHandler()
-    result = handler.call_function(messages, tools)
+    result = handler.call_function_standard(messages, tools, available_functions)
     
     if not result['success']:
         logger.error(f"Function call 失败: {result.get('error')}")
         return None, None, None
     
-    # 提取结果
-    arguments = result['arguments']
-    classification = arguments.get('subtype')
-    reasoning = arguments.get('reasoning', '')
+    # 提取函数执行结果
+    func_result = result['result']
     
-    if classification not in subtype_info:
-        logger.error(f"分类结果 '{classification}' 不在候选列表中")
+    if not func_result['success']:
+        logger.error(f"分类验证失败: {func_result.get('error')}")
         return None, None, None
     
-    element_id = subtype_info[classification]['elementId']
+    classification = func_result['classification']
+    element_id = func_result['element_id']
+    reasoning = func_result['reasoning']
     
     logger.debug(f"分类成功: {classification}")
-    if reasoning:
-        logger.debug(f"理由: {reasoning}")
+    logger.debug(f"理由: {reasoning}")
+    logger.debug(f"LLM 最终回答: {result['final_answer']}")
     
     return classification, element_id, reasoning
 
@@ -186,7 +197,7 @@ def classify_material_with_function_call(material_data, parent_name, subtype_inf
 def select_instance_with_function_call(material_data, special_node_name, 
                                       instance_info, logger):
     """
-    使用 Function Call 选择具体实例
+    使用标准 Function Call 选择具体实例（两次调用）
     
     Args:
         material_data: 材料数据
@@ -230,27 +241,39 @@ def select_instance_with_function_call(material_data, special_node_name,
         {"role": "user", "content": user_prompt}
     ]
     
-    # 调用 function call
+    # 准备可执行的函数
+    select_func = partial(
+        select_instance,
+        material_data=material_data,
+        special_node_name=special_node_name,
+        instance_info=instance_info
+    )
+    
+    available_functions = {
+        'select_instance': select_func
+    }
+    
+    # 调用标准 function call
     handler = FunctionCallHandler()
-    result = handler.call_function(messages, tools)
+    result = handler.call_function_standard(messages, tools, available_functions)
     
     if not result['success']:
         logger.error(f"Function call 失败: {result.get('error')}")
         return None, None, None
     
-    # 提取结果
-    arguments = result['arguments']
-    instance = arguments.get('instance')
-    reasoning = arguments.get('reasoning', '')
+    # 提取函数执行结果
+    func_result = result['result']
     
-    if instance not in instance_info:
-        logger.error(f"选择的实例 '{instance}' 不在候选列表中")
+    if not func_result['success']:
+        logger.error(f"实例选择验证失败: {func_result.get('error')}")
         return None, None, None
     
-    element_id = instance_info[instance]['elementId']
+    instance = func_result['selected_instance']
+    element_id = func_result['element_id']
+    reasoning = func_result['reasoning']
     
     logger.debug(f"选择成功: {instance}")
-    if reasoning:
-        logger.debug(f"理由: {reasoning}")
+    logger.debug(f"理由: {reasoning}")
+    logger.debug(f"LLM 最终回答: {result['final_answer']}")
     
     return instance, element_id, reasoning
