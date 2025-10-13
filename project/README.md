@@ -1,222 +1,211 @@
-# 材料知识图谱挂载系统
+# 材料知识图谱自动挂载系统
 
-这是一个基于Neo4j和DeepSeek API的材料知识图谱自动挂载系统，能够将材料数据智能分类并挂载到知识图谱的合适位置。
+基于 DeepSeek Function Calling 的材料知识图谱智能挂载系统。
 
-## 📁 文件结构
+## 🔄 核心流程
 
 ```
-project/
-├── config.py              # 配置文件（数据库连接、API密钥等）
-├── data_loader.py         # 数据加载模块
-├── neo4j_connector.py     # Neo4j数据库连接器
-├── prompt_generator.py    # Prompt生成模块
-├── classifier.py          # 分类器（通用+特殊）
-├── node_mounter.py        # 节点挂载模块
-├── main.py               # 主程序入口
-├── README.md             # 本文件
-└── data/
-    └── high_entropy_alloy.json  # 材料数据文件
+读取材料数据
+    ↓
+连接 Neo4j 数据库
+    ↓
+【While 循环分类】
+    获取子节点 → Function Call 分类 → 更新当前节点
+    ↓（直到到达特殊节点）
+【特殊节点判断】
+    检查当前节点是否为特殊节点（如"高熵合金"）
+    ↓
+【特殊分类】
+    获取实例列表 → Function Call 选择实例
+    ↓
+【挂载节点】
+    创建新节点 → 建立关系 → 保存信息
+    ↓
+【记录日志和结果】
+    logs/*.log + results/*.json + cleanup/*.json
 ```
 
 ## 🚀 快速开始
 
-### 1. 环境准备
+### 1. 安装依赖
 
 ```bash
-# 安装依赖
-pip install neo4j openai
-
-# 设置环境变量（DeepSeek API密钥）
-export DEEPSEEK_API_KEY="your_api_key_here"
+bash install.sh
 ```
 
-### 2. 配置文件
+### 2. 配置 API 密钥
 
-编辑 `config.py`，根据你的环境修改以下配置：
+```bash
+export DEEPSEEK_API_KEY="your_api_key"
+```
+
+### 3. 配置文件
+
+编辑 `config.py`：
 
 ```python
-# Neo4j 数据库配置
-NEO4J_URI = "neo4j://10.77.50.200:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "your_password"
-
 # 数据文件路径
-DATA_FILE_PATH = "/path/to/your/high_entropy_alloy.json"
+DATA_FILE_PATH = "/path/to/your/data.json"
 
-# 根节点配置
-ROOT_ELEMENT_ID = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
-ROOT_NAME = "材料"
+# 特殊节点列表
+SPECIAL_NODES = ["高熵合金"]
 ```
 
-### 3. 运行程序
+### 4. 运行程序
 
+**方式1：Shell 脚本（推荐）**
+```bash
+bash run.sh
+```
+
+**方式2：Python 命令**
 ```bash
 python3 main.py
 ```
 
-## 📝 模块说明
-
-### config.py
-存放所有配置信息，包括：
-- Neo4j数据库连接信息
-- DeepSeek API配置
-- 数据文件路径
-- 分类层级配置
-
-### data_loader.py
-负责数据读取和格式化：
-- `load_material_data()`: 从JSON文件加载材料数据
-- `format_material_for_prompt()`: 格式化数据用于Prompt
-
-### neo4j_connector.py
-Neo4j数据库操作类：
-- `get_child_nodes_by_element_id()`: 获取子节点（支持出边/入边）
-- `build_classification_info()`: 构建分类信息和例子
-- `get_random_neighbor_by_name()`: 随机选择相邻节点（用于特殊分类）
-
-### prompt_generator.py
-Prompt生成模块：
-- `generate_task_description()`: 调用API生成任务描述
-- `build_classification_prompt()`: 构建完整的分类System Prompt
-
-### classifier.py
-分类器模块：
-- `classify_material()`: 通用材料分类函数（带自动纠错）
-- `classify_high_entropy_alloy()`: 高熵合金特殊分类函数
-
-### node_mounter.py
-节点挂载模块：
-- `mount_material_node()`: 创建新节点并挂载到图谱
-- `verify_mounting()`: 验证挂载是否成功
-
-### main.py
-主程序入口，执行完整流程：
-1. 读取材料数据
-2. 连接Neo4j数据库
-3. 多层分类（三层）
-4. 特殊分类判断（高熵合金）
-5. 挂载新节点
-6. 显示分类路径
-
-## 🔧 工作流程
+## 📊 输出文件
 
 ```
-1. 读取材料数据 (data_loader)
-   ↓
-2. 连接Neo4j (neo4j_connector)
-   ↓
-3. 第一层分类: 材料 → 材料类型 (classifier + prompt_generator)
-   ↓
-4. 第二层分类: 金属材料 → 子类型 (classifier + prompt_generator)
-   ↓
-5. 第三层分类: 特殊用途金属材料 → 具体类型 (classifier + prompt_generator)
-   ↓
-6. 特殊分类判断
-   ├─ 是 "高熵合金" → 随机选择相邻节点 (classifier)
-   └─ 否 → 使用当前节点
-   ↓
-7. 挂载新材料节点 (node_mounter)
-   ↓
-8. 验证并显示结果
+logs/
+  └── mount_log_YYYYMMDD_HHMMSS.log     # 详细日志
+
+results/
+  └── mount_result_YYYYMMDD_HHMMSS.json # 挂载结果（JSON格式）
+
+cleanup/
+  └── new_data1.json                     # 清理记录
 ```
 
-## 📊 输出示例
+## 🧹 清理挂载节点
 
-```
-材料知识图谱挂载系统
-======================================================================
+```bash
+# Shell 脚本
+bash cleanup.sh
 
-【步骤1】读取材料数据
-----------------------------------------------------------------------
-✅ 成功读取材料数据
-
-【步骤2】连接Neo4j数据库
-----------------------------------------------------------------------
-✅ Neo4j 数据库连接成功！
-
-【步骤3】开始多层分类
-======================================================================
-
-第一层分类：材料 → 子类型
-🎯 第一层分类结果: 金属材料
-
-第二层分类：金属材料 → 子类型
-🎯 第二层分类结果: 特殊用途金属材料
-
-第三层分类：特殊用途金属材料 → 具体类型
-🎯 第三层分类结果: 高熵合金
-
-【步骤4】特殊分类判断
-✅ 检测到特殊节点: 高熵合金
-🎯 特殊分类结果: Ti-13Nb-13Zr
-
-【步骤5】挂载新材料节点
-✅ 成功创建并挂载新节点！
-   新节点名称: Material_12345
-   挂载关系: Material_12345 -[BELONGS_TO]-> Ti-13Nb-13Zr
-
-🎉 材料节点挂载成功！
-
-完整分类路径：
-材料 → 金属材料 → 特殊用途金属材料 → 高熵合金 → Ti-13Nb-13Zr
-======================================================================
-
-✅ 程序执行完毕
+# Python 命令
+python3 cleanup/delete_mounted_nodes.py
 ```
 
-## 🎯 扩展指南
+## 🎯 Function Call 工作原理
 
-### 添加新的分类层级
-在 `config.py` 中修改 `LAYER_CONFIGS`：
+系统使用 DeepSeek Function Calling API 进行智能分类：
+
+### 1. 层级分类函数
 
 ```python
-LAYER_CONFIGS = [
-    {"name": "第一层", "use_inbound": False},
-    {"name": "第二层", "use_inbound": False},
-    {"name": "第三层", "use_inbound": True},
-    {"name": "第四层", "use_inbound": False},  # 新增层级
-]
+{
+  "name": "classify_to_subtype",
+  "parameters": {
+    "subtype": {
+      "enum": ["金属材料", "非金属材料", ...]  # 动态生成
+    },
+    "reasoning": {
+      "type": "string"  # 分类理由
+    }
+  }
+}
 ```
 
-### 添加新的特殊分类逻辑
-在 `classifier.py` 中添加新的特殊分类函数：
+### 2. 实例选择函数
 
 ```python
-def classify_xxx_material(neo4j_conn, node_name):
-    # 实现你的特殊分类逻辑
-    pass
+{
+  "name": "select_instance",
+  "parameters": {
+    "instance": {
+      "enum": ["Ti-13Nb-13Zr", "CoCrFeMnNi", ...]  # 动态生成
+    },
+    "reasoning": {
+      "type": "string"  # 选择理由
+    }
+  }
+}
 ```
 
-然后在 `main.py` 中调用：
+**优势**：
+- ✅ 自动验证（enum 限制，无需重试）
+- ✅ 结构化输出（直接获取分类结果）
+- ✅ 包含推理过程（debugging 友好）
+
+详见 [FUNCTION_CALL_FLOW.md](FUNCTION_CALL_FLOW.md)
+
+## 📁 项目结构
+
+```
+project/
+├── config.py                    # 全局配置
+├── main.py                      # 主程序入口
+├── function_call_handler.py     # Function Call 封装
+├── classifier.py                # 分类逻辑
+├── neo4j_connector.py           # 数据库操作
+├── node_mounter.py              # 节点挂载
+├── data_loader.py               # 数据读取
+├── logger.py                    # 日志模块
+├── result_writer.py             # 结果输出
+├── cleanup/                     # 清理模块
+│   ├── save_mounted_nodes.py
+│   └── delete_mounted_nodes.py
+├── data/                        # 数据文件
+├── logs/                        # 日志输出
+├── results/                     # 结果输出
+├── run.sh                       # 运行脚本
+├── cleanup.sh                   # 清理脚本
+└── install.sh                   # 安装脚本
+```
+
+## ⚙️ 配置说明
+
+### config.py 关键配置
 
 ```python
-if current_name == "你的特殊节点名":
-    special_result = classify_xxx_material(neo4j_conn, current_name)
+# 数据文件
+DATA_FILE_PATH = "/path/to/data.json"
+
+# 特殊节点（需要特殊分类）
+SPECIAL_NODES = ["高熵合金"]
+
+# 分类最大深度（防止死循环）
+MAX_CLASSIFICATION_DEPTH = 20
 ```
 
-## ⚠️ 注意事项
+## 📖 详细文档
 
-1. 确保Neo4j数据库运行正常且可访问
-2. 确保设置了 `DEEPSEEK_API_KEY` 环境变量
-3. 数据文件路径必须正确
-4. 节点的 `elementId` 是唯一标识，必须准确
-5. 第三层分类使用入边查询例子（历史原因）
+- [FUNCTION_CALL_FLOW.md](FUNCTION_CALL_FLOW.md) - Function Call 工作流程
+- [USAGE_GUIDE.md](USAGE_GUIDE.md) - 使用指南
+- [CLEANUP_USAGE.md](CLEANUP_USAGE.md) - 清理模块说明
 
-## 🐛 常见问题
+## 🔧 常见问题
 
-**Q: 为什么第三层使用入边查询？**
-A: 这是历史原因导致的图谱结构问题，第三层的例子节点通过入边连接。
+### Q: 如何处理大量数据？
 
-**Q: 如何修改挂载的关系类型？**
-A: 在 `node_mounter.py` 的 `mount_material_node()` 函数中修改 `BELONGS_TO` 为你需要的关系类型。
+程序会在处理超过 100 条数据时询问确认。可以在 main.py 中限制数量：
 
-**Q: 如何批量处理多条数据？**
-A: 修改 `main.py`，在读取数据后添加循环：
 ```python
-for i in range(len(all_data)):
-    material_data = all_data[i]
-    # 执行分类和挂载流程
+all_materials = all_materials[:10]  # 只处理前10条
 ```
+
+### Q: 如何添加新的特殊节点？
+
+编辑 `config.py`：
+
+```python
+SPECIAL_NODES = ["高熵合金", "复合材料", "纳米材料"]
+```
+
+### Q: Function Call 失败怎么办？
+
+检查：
+1. API 密钥是否正确
+2. 网络连接是否正常
+3. 查看日志文件中的详细错误信息
+
+## 📝 版本
+
+**Version 2.0** - Function Call 版本
+- 使用标准 DeepSeek Function Calling API
+- 动态层级分类（不限制层数）
+- 自动验证分类结果
+- 完整的日志和结果记录
 
 ## 📄 许可
 
