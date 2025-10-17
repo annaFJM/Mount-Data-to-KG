@@ -35,7 +35,7 @@ def mount_material_node(neo4j_conn, material_data, target_element_id, target_nam
             # 将所有材料数据转为JSON字符串
             data_json = json.dumps(material_data, ensure_ascii=False)
             
-            # 构建Cypher查询
+# 构建Cypher查询
             query = """
             MATCH (target)
             WHERE elementId(target) = $target_id
@@ -44,10 +44,9 @@ def mount_material_node(neo4j_conn, material_data, target_element_id, target_nam
                 mounted_at: $mounted_at,
                 data: $data
             })
-            CREATE (new_material)-[:BELONGS_TO]->(target)
+            CREATE (new_material)-[:isBelongTo]->(target)
             RETURN elementId(new_material) as new_node_id
             """
-            
             result = session.run(
                 query, 
                 target_id=target_element_id,
@@ -101,7 +100,7 @@ def verify_mounting(neo4j_conn, target_element_id, target_name):
     with neo4j_conn.driver.session() as session:
         try:
             query = """
-            MATCH (material:Material)-[:BELONGS_TO]->(target)
+            MATCH (material:Material)-[:isBelongTo]->(target)
             WHERE elementId(target) = $target_id
             RETURN count(material) as count
             """

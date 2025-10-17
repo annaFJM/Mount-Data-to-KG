@@ -16,7 +16,7 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DATA_FILE_PATH = "/home/thl/2025Fall/Mount-Data-to-KG/project/data/high_entropy_alloy.json"
 
 # 根节点配置
-ROOT_ELEMENT_ID = "4:bf9f3e2f-61c2-430f-be08-580850049dc8:0"
+ROOT_ELEMENT_ID = "4:e8330145-fd8c-484c-a38a-f3900a6199de:0"
 ROOT_NAME = "材料"
 
 # ===== 新增配置 =====

@@ -13,40 +13,45 @@ from material_functions import (
 def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
     """
     为Class节点构建可用工具（函数1、2）
-    
-    Args:
-        current_element_id: 当前Class节点的elementId
-        current_name: 当前Class节点名称
-        neo4j_conn: Neo4j连接器
-    
-    Returns:
-        tuple: (tools列表, available_functions字典, 辅助数据字典)
     """
-    # 获取出边Class节点
     outbound_nodes = neo4j_conn.get_outbound_class_nodes(current_element_id)
     
     tools = []
     available_functions = {}
     helper_data = {'outbound_nodes': outbound_nodes}
     
-    # 函数1：导航到出边节点（如果有出边Class节点）
     if outbound_nodes:
+        # --- 新增代码：为每个选项获取例子 ---
+        options_with_examples = []
+        for node in outbound_nodes:
+            examples = neo4j_conn.get_node_examples(node['elementId'])
+            example_str = f" (例子: {', '.join(examples)})" if examples else " (无例子)"
+            options_with_examples.append(node['name'] + example_str)
+        
+        options_formatted = "\n- ".join(options_with_examples)
+        description_with_examples = (
+            f"选择下一个要移动到的Class节点。\n"
+            f"可用选项和例子如下：\n- {options_formatted}"
+        )
+
         tools.append({
             "type": "function",
             "function": {
                 "name": "navigate_outbound",
-                "description": f"从当前节点'{current_name}'移动到下一级Class节点。选择最符合材料特征的子类别。",
+                # --- 修改这里的 description ---
+                "description": f"从当前节点'{current_name}'移动到下一级Class节点。请参考每个选项后的例子进行选择。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "next_node_name": {
                             "type": "string",
                             "enum": [node['name'] for node in outbound_nodes],
-                            "description": f"选择下一个要移动到的Class节点。可用选项: {', '.join([n['name'] for n in outbound_nodes])}"
+                            # --- 修改这里的 description ---
+                            "description": description_with_examples
                         },
                         "reasoning": {
                             "type": "string",
-                            "description": "为什么选择这个节点？根据材料的成分、性质等特征说明理由。"
+                            "description": "为什么选择这个节点？请结合例子和材料特征进行说明。"
                         }
                     },
                     "required": ["next_node_name", "reasoning"]
@@ -54,7 +59,6 @@ def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
             }
         })
         
-        # 绑定函数
         available_functions['navigate_outbound'] = partial(
             navigate_outbound,
             current_element_id=current_element_id,
@@ -63,12 +67,10 @@ def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
             neo4j_conn=neo4j_conn
         )
     
-    # 函数2：查看入边Entity节点（总是可用，但要根据是否有出边调整描述）
+    # ... (保留 navigate_inbound 的逻辑不变)
     if outbound_nodes:
-        # 有出边Class节点 - 不建议调用此函数
         inbound_description = f"查看'{current_name}'下的具体材料实例（Entity节点）。⚠️ 警告：当前还有子分类可用，建议先使用 navigate_outbound 继续细分。"
     else:
-        # 没有出边Class节点 - 这是唯一选择
         inbound_description = f"查看'{current_name}'下的具体材料实例（Entity节点）。当前已到达分类树的叶子节点，没有更细的子分类。"
     
     tools.append({
@@ -78,12 +80,7 @@ def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
             "description": inbound_description,
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "reasoning": {
-                        "type": "string",
-                        "description": "为什么要查看Entity节点？"
-                    }
-                },
+                "properties": { "reasoning": { "type": "string", "description": "为什么要查看Entity节点？"}},
                 "required": ["reasoning"]
             }
         }
@@ -97,7 +94,6 @@ def build_tools_for_class_node(current_element_id, current_name, neo4j_conn):
     )
     
     return tools, available_functions, helper_data
-
 
 def build_tools_for_entity_selection(entities, need_similarity, current_element_id,
                                      material_data, neo4j_conn):

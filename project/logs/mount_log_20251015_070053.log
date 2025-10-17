@@ -1,0 +1,142 @@
+2025-10-15 07:00:53 - INFO - 日志文件已创建: logs/mount_log_20251015_070053.log
+2025-10-15 07:00:53 - INFO - 系统启动
+2025-10-15 07:00:53 - INFO - 读取数据文件: /home/thl/2025Fall/Mount-Data-to-KG/project/data/high_entropy_alloy.json
+2025-10-15 07:00:53 - INFO - 共加载 3 条材料数据
+2025-10-15 07:00:53 - INFO - 连接Neo4j数据库
+2025-10-15 07:00:53 - INFO - 
+开始批量处理 3 条材料数据
+
+2025-10-15 07:00:53 - INFO - 
+======================================================================
+2025-10-15 07:00:53 - INFO - 开始处理材料 #0
+2025-10-15 07:00:53 - INFO - ======================================================================
+2025-10-15 07:00:53 - INFO - 
+【轮次 1】当前节点: 材料
+2025-10-15 07:00:53 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:00:53 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:01:08 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:01:08 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '材料', 'to_node': '金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:1', 'reasoning': '该材料Mn1Fe1Co1Ni1Cu1Nb2是一种高熵合金，由多种金属元素（Mn、Fe、Co、Ni、Cu、Nb）组成。高熵合金属于金属材料的范畴，特别是金属功能材料或特殊用途金属材料。从成分比重和预测硬度等特征来看，这明显是一种金属合金材料。', 'path_update': '材料 → 金属材料'}
+2025-10-15 07:01:08 - INFO -   移动: 材料 → 金属材料
+2025-10-15 07:01:08 - DEBUG -   理由: 该材料Mn1Fe1Co1Ni1Cu1Nb2是一种高熵合金，由多种金属元素（Mn、Fe、Co、Ni、Cu、Nb）组成。高熵合金属于金属材料的范畴，特别是金属功能材料或特殊用途金属材料。从成分比重和预测硬度等特征来看，这明显是一种金属合金材料。
+2025-10-15 07:01:08 - INFO - 
+【轮次 2】当前节点: 金属材料
+2025-10-15 07:01:08 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:01:08 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:01:18 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:01:18 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '金属材料', 'to_node': '特殊用途金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:6', 'reasoning': "该材料Mn1Fe1Co1Ni1Cu1Nb2是一个典型的高熵合金，具有多种主要元素等原子比组合的特征。在navigate_outbound的选项中，'特殊用途金属材料'分类的【例子】中明确包含了'高熵合金'，这与该材料的类型完全匹配。材料摘要也明确提到'面向高熵合金的机器学习模型预测数据'，进一步确认了其高熵合金的属性。", 'path_update': '金属材料 → 特殊用途金属材料'}
+2025-10-15 07:01:18 - INFO -   移动: 金属材料 → 特殊用途金属材料
+2025-10-15 07:01:18 - DEBUG -   理由: 该材料Mn1Fe1Co1Ni1Cu1Nb2是一个典型的高熵合金，具有多种主要元素等原子比组合的特征。在navigate_outbound的选项中，'特殊用途金属材料'分类的【例子】中明确包含了'高熵合金'，这与该材料的类型完全匹配。材料摘要也明确提到'面向高熵合金的机器学习模型预测数据'，进一步确认了其高熵合金的属性。
+2025-10-15 07:01:18 - INFO - 
+【轮次 3】当前节点: 特殊用途金属材料
+2025-10-15 07:01:18 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:01:18 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:01:27 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:01:27 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '特殊用途金属材料', 'to_node': '高熵合金', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:31', 'reasoning': "该材料Mn1Fe1Co1Ni1Cu1Nb2具有典型的高熵合金特征：包含多种主要元素（Mn、Fe、Co、Ni、Cu、Nb）且成分比重相近，符合高熵合金的多主元设计理念。材料摘要明确提到'面向高熵合金的机器学习模型预测数据'，且关键词包含'硬度预测'，表明这是通过机器学习方法预测的高熵合金性能数据。", 'path_update': '特殊用途金属材料 → 高熵合金'}
+2025-10-15 07:01:27 - INFO -   移动: 特殊用途金属材料 → 高熵合金
+2025-10-15 07:01:27 - DEBUG -   理由: 该材料Mn1Fe1Co1Ni1Cu1Nb2具有典型的高熵合金特征：包含多种主要元素（Mn、Fe、Co、Ni、Cu、Nb）且成分比重相近，符合高熵合金的多主元设计理念。材料摘要明确提到'面向高熵合金的机器学习模型预测数据'，且关键词包含'硬度预测'，表明这是通过机器学习方法预测的高熵合金性能数据。
+2025-10-15 07:01:27 - INFO - 
+【轮次 4】当前节点: 高熵合金
+2025-10-15 07:01:27 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:01:27 - DEBUG - 调用LLM，可用函数: ['navigate_inbound']
+2025-10-15 07:01:42 - INFO - ✅ 调用函数: navigate_inbound
+2025-10-15 07:01:42 - DEBUG - 函数返回: {'success': True, 'action': 'check_entities', 'node_name': '高熵合金', 'entity_count': 6349, 'entities': [{'name': 'FeCoNiCrSi_x', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23616'}, {'name': '[MoTi14]Zr1', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29368'}, {'name': 'SAC305 (Sn?3.0Ag?0.5Cu)', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27281'}, {'name': 'CoCrFeNiMo', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23631'}, {'name': 'NbMoTaX系高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26160'}, {'name': 'Zr?Ti?Cu?Ni?Be', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28011'}, {'name': 'VNbMoTaWCrB', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:24534'}, {'name': 'HEA SNWs/C', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26327'}, {'name': '(FeMnCoNiCr)3O4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25805'}, {'name': 'Mo0.5NbHf0.5ZrTi', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28751'}, {'name': '(La0.2Ce0.2Nd0.2Sm0.2Eu0.2)PO4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23759'}, {'name': 'Mg-V-AlCr-Ni 多元高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27922'}, {'name': 'FeAl_xNiCrMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28238'}, {'name': 'Fe基涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23414'}, {'name': 'NiCuCoFe', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25362'}, {'name': 'Co-Ni', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28792'}, {'name': 'AlFe20Co20Ni41', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29044'}, {'name': 'NiCoFeMoMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27932'}, {'name': 'Fe69B22Si5Nb4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23725'}, {'name': 'Co?Cr?Fe?Ni?Mn 高熵合金涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25315'}], 'need_similarity_search': True, 'reasoning': '当前位于高熵合金分类节点，需要查看具体材料实例Mn1Fe1Co1Ni1Cu1Nb2的详细信息。该材料包含完整的成分信息（Mn、Fe、Co、Ni、Cu、Nb各元素配比）和机器学习预测的硬度数据，是一个具体的高熵合金实例，适合查看Entity节点信息。', 'message': '找到 6349 个Entity节点，数量较多，建议使用相似度搜索'}
+2025-10-15 07:01:42 - INFO -   找到 6349 个Entity节点
+2025-10-15 07:01:42 - INFO -   Entity数量较多，开始相似度搜索...
+2025-10-15 07:02:14 - INFO -   ✅ 挂载成功！
+2025-10-15 07:02:14 - INFO -   新节点: Material_6752e7ba33aa
+2025-10-15 07:02:14 - INFO -   目标: (FeMnCoNiCr)3O4
+2025-10-15 07:02:14 - INFO -   分类路径: 材料 → 金属材料 → 特殊用途金属材料 → 高熵合金
+2025-10-15 07:02:14 - INFO - 
+======================================================================
+2025-10-15 07:02:14 - INFO - 开始处理材料 #1
+2025-10-15 07:02:14 - INFO - ======================================================================
+2025-10-15 07:02:14 - INFO - 
+【轮次 1】当前节点: 材料
+2025-10-15 07:02:14 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:02:14 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:02:30 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:02:30 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '材料', 'to_node': '金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:1', 'reasoning': '该材料Mn1Zr1Ta1是高熵合金，由三种金属元素组成，属于金属材料范畴。金属材料分类包含金属功能材料等子类，适合高熵合金的进一步分类。', 'path_update': '材料 → 金属材料'}
+2025-10-15 07:02:30 - INFO -   移动: 材料 → 金属材料
+2025-10-15 07:02:30 - DEBUG -   理由: 该材料Mn1Zr1Ta1是高熵合金，由三种金属元素组成，属于金属材料范畴。金属材料分类包含金属功能材料等子类，适合高熵合金的进一步分类。
+2025-10-15 07:02:30 - INFO - 
+【轮次 2】当前节点: 金属材料
+2025-10-15 07:02:30 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:02:30 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:02:40 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:02:40 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '金属材料', 'to_node': '特殊用途金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:6', 'reasoning': "该材料Mn1Zr1Ta1明确标注为高熵合金，且具有硬度预测功能。在特殊用途金属材料的例子中直接包含'高熵合金'，这与材料的特性和分类完全匹配。其他分类如钢铁、有色金属材料等都不包含高熵合金的例子。", 'path_update': '金属材料 → 特殊用途金属材料'}
+2025-10-15 07:02:40 - INFO -   移动: 金属材料 → 特殊用途金属材料
+2025-10-15 07:02:40 - DEBUG -   理由: 该材料Mn1Zr1Ta1明确标注为高熵合金，且具有硬度预测功能。在特殊用途金属材料的例子中直接包含'高熵合金'，这与材料的特性和分类完全匹配。其他分类如钢铁、有色金属材料等都不包含高熵合金的例子。
+2025-10-15 07:02:40 - INFO - 
+【轮次 3】当前节点: 特殊用途金属材料
+2025-10-15 07:02:40 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:02:40 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:02:52 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:02:52 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '特殊用途金属材料', 'to_node': '高熵合金', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:31', 'reasoning': "该材料Mn1Zr1Ta1是典型的高熵合金成分，包含Mn、Zr、Ta三种元素，且MGE18_摘要明确标注为'面向高熵合金的机器学习模型预测数据'，关键词包含'硬度预测'，预测硬度为563.4857095129887，完全符合高熵合金的特征。", 'path_update': '特殊用途金属材料 → 高熵合金'}
+2025-10-15 07:02:52 - INFO -   移动: 特殊用途金属材料 → 高熵合金
+2025-10-15 07:02:52 - DEBUG -   理由: 该材料Mn1Zr1Ta1是典型的高熵合金成分，包含Mn、Zr、Ta三种元素，且MGE18_摘要明确标注为'面向高熵合金的机器学习模型预测数据'，关键词包含'硬度预测'，预测硬度为563.4857095129887，完全符合高熵合金的特征。
+2025-10-15 07:02:52 - INFO - 
+【轮次 4】当前节点: 高熵合金
+2025-10-15 07:02:52 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:02:52 - DEBUG - 调用LLM，可用函数: ['navigate_inbound']
+2025-10-15 07:03:02 - INFO - ✅ 调用函数: navigate_inbound
+2025-10-15 07:03:02 - DEBUG - 函数返回: {'success': True, 'action': 'check_entities', 'node_name': '高熵合金', 'entity_count': 6349, 'entities': [{'name': 'FeCoNiCrSi_x', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23616'}, {'name': '[MoTi14]Zr1', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29368'}, {'name': 'SAC305 (Sn?3.0Ag?0.5Cu)', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27281'}, {'name': 'CoCrFeNiMo', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23631'}, {'name': 'NbMoTaX系高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26160'}, {'name': 'Zr?Ti?Cu?Ni?Be', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28011'}, {'name': 'VNbMoTaWCrB', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:24534'}, {'name': 'HEA SNWs/C', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26327'}, {'name': '(FeMnCoNiCr)3O4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25805'}, {'name': 'Mo0.5NbHf0.5ZrTi', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28751'}, {'name': '(La0.2Ce0.2Nd0.2Sm0.2Eu0.2)PO4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23759'}, {'name': 'Mg-V-AlCr-Ni 多元高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27922'}, {'name': 'FeAl_xNiCrMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28238'}, {'name': 'Fe基涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23414'}, {'name': 'NiCuCoFe', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25362'}, {'name': 'Co-Ni', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28792'}, {'name': 'AlFe20Co20Ni41', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29044'}, {'name': 'NiCoFeMoMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27932'}, {'name': 'Fe69B22Si5Nb4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23725'}, {'name': 'Co?Cr?Fe?Ni?Mn 高熵合金涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25315'}], 'need_similarity_search': True, 'reasoning': '当前材料Mn1Zr1Ta1是一个具体的高熵合金实例，包含完整的成分信息（Mn:1.0, Zr:1.0, Ta:1.0）和预测硬度数据。这属于Entity节点级别的具体材料，需要查看该具体实例的详细信息。', 'message': '找到 6349 个Entity节点，数量较多，建议使用相似度搜索'}
+2025-10-15 07:03:02 - INFO -   找到 6349 个Entity节点
+2025-10-15 07:03:02 - INFO -   Entity数量较多，开始相似度搜索...
+2025-10-15 07:03:26 - INFO -   ✅ 挂载成功！
+2025-10-15 07:03:26 - INFO -   新节点: Material_ced9381cf7e5
+2025-10-15 07:03:26 - INFO -   目标: NbMoTaX系高熵合金
+2025-10-15 07:03:26 - INFO -   分类路径: 材料 → 金属材料 → 特殊用途金属材料 → 高熵合金
+2025-10-15 07:03:26 - INFO - 
+======================================================================
+2025-10-15 07:03:26 - INFO - 开始处理材料 #2
+2025-10-15 07:03:26 - INFO - ======================================================================
+2025-10-15 07:03:26 - INFO - 
+【轮次 1】当前节点: 材料
+2025-10-15 07:03:26 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:03:26 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:03:44 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:03:44 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '材料', 'to_node': '金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:1', 'reasoning': '该材料Ti1V1Cr2Zr1Nb1Hf1是一种高熵合金，由多种金属元素（Ti、V、Cr、Zr、Nb、Hf）组成。根据选项中的例子，金属材料包括金属功能材料、钢铁、粉末冶金材料、有色金属材料等，高熵合金属于金属材料中的先进金属材料类别。', 'path_update': '材料 → 金属材料'}
+2025-10-15 07:03:44 - INFO -   移动: 材料 → 金属材料
+2025-10-15 07:03:44 - DEBUG -   理由: 该材料Ti1V1Cr2Zr1Nb1Hf1是一种高熵合金，由多种金属元素（Ti、V、Cr、Zr、Nb、Hf）组成。根据选项中的例子，金属材料包括金属功能材料、钢铁、粉末冶金材料、有色金属材料等，高熵合金属于金属材料中的先进金属材料类别。
+2025-10-15 07:03:44 - INFO - 
+【轮次 2】当前节点: 金属材料
+2025-10-15 07:03:44 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:03:44 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:03:55 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:03:55 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '金属材料', 'to_node': '特殊用途金属材料', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:6', 'reasoning': "该材料Ti1V1Cr2Zr1Nb1Hf1是典型的高熵合金，具有多种主要元素（Ti、V、Cr、Zr、Nb、Hf）的等原子比组合，符合高熵合金的定义特征。在'特殊用途金属材料'分类的例子中明确包含'高熵合金'，因此这是最合适的分类选择。", 'path_update': '金属材料 → 特殊用途金属材料'}
+2025-10-15 07:03:55 - INFO -   移动: 金属材料 → 特殊用途金属材料
+2025-10-15 07:03:55 - DEBUG -   理由: 该材料Ti1V1Cr2Zr1Nb1Hf1是典型的高熵合金，具有多种主要元素（Ti、V、Cr、Zr、Nb、Hf）的等原子比组合，符合高熵合金的定义特征。在'特殊用途金属材料'分类的例子中明确包含'高熵合金'，因此这是最合适的分类选择。
+2025-10-15 07:03:55 - INFO - 
+【轮次 3】当前节点: 特殊用途金属材料
+2025-10-15 07:03:55 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:03:55 - DEBUG - 调用LLM，可用函数: ['navigate_outbound', 'navigate_inbound']
+2025-10-15 07:04:08 - INFO - ✅ 调用函数: navigate_outbound
+2025-10-15 07:04:08 - DEBUG - 函数返回: {'success': True, 'action': 'move', 'from_node': '特殊用途金属材料', 'to_node': '高熵合金', 'new_element_id': '4:e8330145-fd8c-484c-a38a-f3900a6199de:31', 'reasoning': "该材料Ti1V1Cr2Zr1Nb1Hf1包含6种主要元素（Ti、V、Cr、Zr、Nb、Hf），每种元素比例相近，符合高熵合金的多主元特征。材料摘要明确标注为'面向高熵合金的机器学习模型预测数据'，且具有硬度预测特性，这些都是高熵合金的典型特征。", 'path_update': '特殊用途金属材料 → 高熵合金'}
+2025-10-15 07:04:08 - INFO -   移动: 特殊用途金属材料 → 高熵合金
+2025-10-15 07:04:08 - DEBUG -   理由: 该材料Ti1V1Cr2Zr1Nb1Hf1包含6种主要元素（Ti、V、Cr、Zr、Nb、Hf），每种元素比例相近，符合高熵合金的多主元特征。材料摘要明确标注为'面向高熵合金的机器学习模型预测数据'，且具有硬度预测特性，这些都是高熵合金的典型特征。
+2025-10-15 07:04:08 - INFO - 
+【轮次 4】当前节点: 高熵合金
+2025-10-15 07:04:08 - DEBUG - 当前在Class节点，构建导航工具
+2025-10-15 07:04:08 - DEBUG - 调用LLM，可用函数: ['navigate_inbound']
+2025-10-15 07:04:23 - INFO - ✅ 调用函数: navigate_inbound
+2025-10-15 07:04:23 - DEBUG - 函数返回: {'success': True, 'action': 'check_entities', 'node_name': '高熵合金', 'entity_count': 6349, 'entities': [{'name': 'FeCoNiCrSi_x', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23616'}, {'name': '[MoTi14]Zr1', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29368'}, {'name': 'SAC305 (Sn?3.0Ag?0.5Cu)', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27281'}, {'name': 'CoCrFeNiMo', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23631'}, {'name': 'NbMoTaX系高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26160'}, {'name': 'Zr?Ti?Cu?Ni?Be', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28011'}, {'name': 'VNbMoTaWCrB', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:24534'}, {'name': 'HEA SNWs/C', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:26327'}, {'name': '(FeMnCoNiCr)3O4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25805'}, {'name': 'Mo0.5NbHf0.5ZrTi', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28751'}, {'name': '(La0.2Ce0.2Nd0.2Sm0.2Eu0.2)PO4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23759'}, {'name': 'Mg-V-AlCr-Ni 多元高熵合金', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27922'}, {'name': 'FeAl_xNiCrMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28238'}, {'name': 'Fe基涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23414'}, {'name': 'NiCuCoFe', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25362'}, {'name': 'Co-Ni', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:28792'}, {'name': 'AlFe20Co20Ni41', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:29044'}, {'name': 'NiCoFeMoMn', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:27932'}, {'name': 'Fe69B22Si5Nb4', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:23725'}, {'name': 'Co?Cr?Fe?Ni?Mn 高熵合金涂层', 'elementId': '4:e8330145-fd8c-484c-a38a-f3900a6199de:25315'}], 'need_similarity_search': True, 'reasoning': '当前材料Ti1V1Cr2Zr1Nb1Hf1是一个具体的高熵合金实例，包含完整的成分信息（Ti:1.0, V:1.0, Cr:2.0, Zr:1.0, Nb:1.0, Hf:1.0）和预测硬度531.69等详细数据。这明显是一个实体节点而非分类节点，需要查看具体的Entity信息。', 'message': '找到 6349 个Entity节点，数量较多，建议使用相似度搜索'}
+2025-10-15 07:04:23 - INFO -   找到 6349 个Entity节点
+2025-10-15 07:04:23 - INFO -   Entity数量较多，开始相似度搜索...
+2025-10-15 07:04:56 - INFO -   ✅ 挂载成功！
+2025-10-15 07:04:56 - INFO -   新节点: Material_7b304bcbd439
+2025-10-15 07:04:56 - INFO -   目标: Mo0.5NbHf0.5ZrTi
+2025-10-15 07:04:56 - INFO -   分类路径: 材料 → 金属材料 → 特殊用途金属材料 → 高熵合金
+2025-10-15 07:04:56 - INFO - 
+保存结果文件
+2025-10-15 07:04:56 - INFO - 
+======================================================================
+2025-10-15 07:04:56 - INFO - 处理完成！
+2025-10-15 07:04:56 - INFO -   总计: 3 条
+2025-10-15 07:04:56 - INFO -   成功: 3 条
+2025-10-15 07:04:56 - INFO -   失败: 0 条
+2025-10-15 07:04:56 - INFO - ======================================================================
+2025-10-15 07:04:56 - INFO - 
+日志文件: logs/mount_log_20251015_070053.log
+2025-10-15 07:04:56 - INFO - 结果文件: results/mount_result_20251015_070053.json
+2025-10-15 07:04:56 - INFO - 
+======================================================================

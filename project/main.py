@@ -43,44 +43,36 @@ def process_single_material(material_data, material_index, neo4j_conn, logger):
     # 格式化材料信息
     material_str = format_material_for_prompt(material_data)
     
-    # 多轮对话循环
     for round_num in range(1, MAX_CONVERSATION_ROUNDS + 1):
         logger.info(f"\n【轮次 {round_num}】当前节点: {current_name}")
         
         try:
-            # 获取当前节点的labels
             labels = neo4j_conn.get_node_labels(current_element_id)
-            logger.debug(f"节点labels: {labels}")
+            # ... (保留错误处理)
             
-            if not labels:
-                error_msg = f"无法获取节点 '{current_name}' 的labels"
-                logger.error(error_msg)
-                return {'success': False, 'error': error_msg}
-            
-            # 根据节点类型构建tools
             if 'Class' in labels:
-                # 在Class节点
                 logger.debug("当前在Class节点，构建导航工具")
                 tools, available_functions, helper_data = build_tools_for_class_node(
                     current_element_id, current_name, neo4j_conn
                 )
                 
-                # 构建本轮的独立消息
+                # --- 修改这里的 system_prompt ---
                 system_prompt = f"""你是材料知识图谱的导航助手。
 
 当前位置：{current_name}
 
-任务：根据材料特征，选择最合适的下一步操作。
+任务：根据材料特征，并参考每个选项后的【例子】，选择最合适的下一步操作。
 
 规则：
-1. 如果可用函数中有 navigate_outbound，**必须优先**调用它移动到子分类
-2. 只有当**没有 navigate_outbound**（没有更细的子分类）时，才调用 navigate_inbound
+1. 如果可用函数中有 navigate_outbound，**必须优先**调用它移动到子分类。
+2. 仔细阅读每个选项的【例子】，选择与材料最匹配的分类。
+3. 只有当**没有 navigate_outbound**（没有更细的子分类）时，才调用 navigate_inbound。
 
 材料信息：
 {material_str}
 
 请选择合适的函数。"""
-
+                
                 messages = [{"role": "user", "content": system_prompt}]
                 
             elif 'Entity' in labels:

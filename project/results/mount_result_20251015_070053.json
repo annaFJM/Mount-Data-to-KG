@@ -1,0 +1,176 @@
+{
+  "total": 3,
+  "success": 3,
+  "failed": 0,
+  "generated_at": "2025-10-15T07:04:56.530337",
+  "results": [
+    {
+      "status": "success",
+      "material_index": 0,
+      "timestamp": "2025-10-15T07:02:14.754437",
+      "classification_path": [
+        {
+          "name": "材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:0"
+        },
+        {
+          "name": "金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:1"
+        },
+        {
+          "name": "特殊用途金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:6"
+        },
+        {
+          "name": "高熵合金",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:31"
+        }
+      ],
+      "mounted_node": {
+        "name": "Material_6752e7ba33aa",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:29644",
+        "mounted_at": "2025-10-15T07:02:11.861329",
+        "data": {
+          "_id": "674742c7f10142971f5cf026",
+          "_meta_id": 16609527,
+          "_tid": 1007,
+          "data": {
+            "成分比重": {
+              "Mn": 1.0,
+              "Fe": 1.0,
+              "Co": 1.0,
+              "Cu": 1.0,
+              "Nb": 2.0,
+              "Ni": 1.0
+            },
+            "预测硬度": 609.8682083530902,
+            "MGE18_标题": "Mn1Fe1Co1Ni1Cu1Nb2",
+            "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+            "MGE18_DOI": "None",
+            "MGE18_关键词": "硬度预测",
+            "MGE18_来源": "self-production",
+            "MGE18_引用": "",
+            "MGE18_数据生产者": "liuan",
+            "MGE18_数据生产机构": "ustb",
+            "MGE18_方法": ""
+          }
+        }
+      },
+      "target_node": {
+        "name": "(FeMnCoNiCr)3O4",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:25805"
+      }
+    },
+    {
+      "status": "success",
+      "material_index": 1,
+      "timestamp": "2025-10-15T07:03:26.590605",
+      "classification_path": [
+        {
+          "name": "材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:0"
+        },
+        {
+          "name": "金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:1"
+        },
+        {
+          "name": "特殊用途金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:6"
+        },
+        {
+          "name": "高熵合金",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:31"
+        }
+      ],
+      "mounted_node": {
+        "name": "Material_ced9381cf7e5",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:29645",
+        "mounted_at": "2025-10-15T07:03:24.689752",
+        "data": {
+          "_id": "6742ab5cf10142971f2416c6",
+          "_meta_id": 12883863,
+          "_tid": 1007,
+          "data": {
+            "成分比重": {
+              "Mn": 1.0,
+              "Zr": 1.0,
+              "Ta": 1.0
+            },
+            "预测硬度": 563.4857095129887,
+            "MGE18_标题": "Mn1Zr1Ta1",
+            "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+            "MGE18_DOI": "None",
+            "MGE18_关键词": "硬度预测",
+            "MGE18_来源": "self-production",
+            "MGE18_引用": "",
+            "MGE18_数据生产者": "liuan",
+            "MGE18_数据生产机构": "ustb",
+            "MGE18_方法": ""
+          }
+        }
+      },
+      "target_node": {
+        "name": "NbMoTaX系高熵合金",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:26160"
+      }
+    },
+    {
+      "status": "success",
+      "material_index": 2,
+      "timestamp": "2025-10-15T07:04:56.529980",
+      "classification_path": [
+        {
+          "name": "材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:0"
+        },
+        {
+          "name": "金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:1"
+        },
+        {
+          "name": "特殊用途金属材料",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:6"
+        },
+        {
+          "name": "高熵合金",
+          "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:31"
+        }
+      ],
+      "mounted_node": {
+        "name": "Material_7b304bcbd439",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:29646",
+        "mounted_at": "2025-10-15T07:04:51.305462",
+        "data": {
+          "_id": "67467b38f10142971f536726",
+          "_meta_id": 15984631,
+          "_tid": 1007,
+          "data": {
+            "成分比重": {
+              "Ti": 1.0,
+              "V": 1.0,
+              "Cr": 2.0,
+              "Zr": 1.0,
+              "Nb": 1.0,
+              "Hf": 1.0
+            },
+            "预测硬度": 531.6856730956472,
+            "MGE18_标题": "Ti1V1Cr2Zr1Nb1Hf1",
+            "MGE18_摘要": "面向高熵合金的机器学习模型预测数据",
+            "MGE18_DOI": "None",
+            "MGE18_关键词": "硬度预测",
+            "MGE18_来源": "self-production",
+            "MGE18_引用": "",
+            "MGE18_数据生产者": "liuan",
+            "MGE18_数据生产机构": "ustb",
+            "MGE18_方法": ""
+          }
+        }
+      },
+      "target_node": {
+        "name": "Mo0.5NbHf0.5ZrTi",
+        "element_id": "4:e8330145-fd8c-484c-a38a-f3900a6199de:28751"
+      }
+    }
+  ]
+}

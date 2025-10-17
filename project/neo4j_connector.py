@@ -23,13 +23,13 @@ class Neo4jConnector:
         if self.driver is not None:
             self.driver.close()
             print("🔌 Neo4j 数据库连接已关闭。")
-    
+
     def get_node_labels(self, element_id):
         """
         获取节点的labels
         
         Returns:
-            list: ['Class'] 或 ['Entity'] 或 []
+            list: ['Class'] 或 ['Material'] 或 []
         """
         if self.driver is None:
             return []
@@ -50,7 +50,7 @@ class Neo4jConnector:
             except Exception as e:
                 print(f"❌ 获取节点labels时出错: {e}")
                 return []
-    
+
     def get_outbound_class_nodes(self, element_id):
         """
         获取出边指向的Class节点
@@ -78,10 +78,10 @@ class Neo4jConnector:
             except Exception as e:
                 print(f"❌ 获取出边Class节点时出错: {e}")
                 return []
-    
+
     def get_inbound_entity_nodes(self, element_id, limit=100):
         """
-        获取入边指向的Entity节点
+        获取入边指向的Material节点
         
         Returns:
             dict: {
@@ -96,7 +96,7 @@ class Neo4jConnector:
             try:
                 # 先查询总数
                 count_query = """
-                MATCH (a:Entity)-[r]->(b)
+                MATCH (a:Material)-[r]->(b)
                 WHERE elementId(b) = $element_id
                 RETURN count(a) as total
                 """
@@ -105,7 +105,7 @@ class Neo4jConnector:
                 
                 # 查询具体节点（限制数量）
                 query = """
-                MATCH (a:Entity)-[r]->(b)
+                MATCH (a:Material)-[r]->(b)
                 WHERE elementId(b) = $element_id
                 RETURN a.name as name, elementId(a) as elementId, a.data as data
                 LIMIT $limit
@@ -132,12 +132,12 @@ class Neo4jConnector:
                     'entities': entities
                 }
             except Exception as e:
-                print(f"❌ 获取入边Entity节点时出错: {e}")
+                print(f"❌ 获取入边Material节点时出错: {e}")
                 return {'count': 0, 'entities': []}
-    
+
     def get_entity_data_by_element_id(self, element_id):
         """
-        获取Entity节点的完整数据
+        获取Material节点的完整数据
         
         Returns:
             dict: 节点的data字段解析后的字典
@@ -148,7 +148,7 @@ class Neo4jConnector:
         with self.driver.session() as session:
             try:
                 query = """
-                MATCH (n:Entity)
+                MATCH (n:Material)
                 WHERE elementId(n) = $element_id
                 RETURN n.data as data
                 """
@@ -162,5 +162,47 @@ class Neo4jConnector:
                         return None
                 return None
             except Exception as e:
-                print(f"❌ 获取Entity数据时出错: {e}")
+                print(f"❌ 获取Material数据时出错: {e}")
                 return None
+
+    def get_node_examples(self, element_id, limit=5):
+        """
+        获取一个节点的例子（最多5个）
+        逻辑:
+        1. 优先查找出边的Class节点
+        2. 如果没有，则查找入边的Material节点
+        """
+        if self.driver is None:
+            return []
+
+        with self.driver.session() as session:
+            try:
+                # 优先查找出边的Class节点
+                # --- 【修正点】移除了BELONGS_TO前面的冒号 ---
+                query_class = """
+                MATCH (a)-[:include|BELONGS_TO]->(b:Class)
+                WHERE elementId(a) = $element_id
+                RETURN b.name as name
+                LIMIT $limit
+                """
+                result = session.run(query_class, element_id=element_id, limit=limit)
+                examples = [record["name"] for record in result]
+                
+                if examples:
+                    return examples
+
+                # 如果没有Class节点，则查找入边的Material节点
+                # --- 【修正点】移除了BELONGS_TO前面的冒号 ---
+                query_entity = """
+                MATCH (b:Material)-[:include|BELONGS_TO]->(a)
+                WHERE elementId(a) = $element_id
+                RETURN b.name as name
+                LIMIT $limit
+                """
+                result = session.run(query_entity, element_id=element_id, limit=limit)
+                examples = [record["name"] for record in result]
+                
+                return examples
+            except Exception as e:
+                print(f"❌ 获取节点例子时出错: {e}")
+                return []

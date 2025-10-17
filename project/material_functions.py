@@ -259,7 +259,7 @@ def mount_to_entity(target_element_id, reasoning, material_data, neo4j_conn):
             mounted_at = datetime.now().isoformat()
             data_json = json.dumps(material_data, ensure_ascii=False)
             
-            # 创建节点并建立关系
+# 创建节点并建立关系
             query = """
             MATCH (target)
             WHERE elementId(target) = $target_id
@@ -268,7 +268,7 @@ def mount_to_entity(target_element_id, reasoning, material_data, neo4j_conn):
                 mounted_at: $mounted_at,
                 data: $data
             })
-            CREATE (new_material)-[:BELONGS_TO]->(target)
+            CREATE (new_material)-[:isBelongTo]->(target)
             RETURN elementId(new_material) as new_node_id, target.name as target_name
             """
             
