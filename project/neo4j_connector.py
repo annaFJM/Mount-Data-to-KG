@@ -178,9 +178,9 @@ class Neo4jConnector:
         with self.driver.session() as session:
             try:
                 # 优先查找出边的Class节点
-                # --- 【修正点】移除了BELONGS_TO前面的冒号 ---
+                # --- 修改这里：移除 BELONGS_TO ---
                 query_class = """
-                MATCH (a)-[:include|BELONGS_TO]->(b:Class)
+                MATCH (a)-[:include]->(b:Class)
                 WHERE elementId(a) = $element_id
                 RETURN b.name as name
                 LIMIT $limit
@@ -192,9 +192,9 @@ class Neo4jConnector:
                     return examples
 
                 # 如果没有Class节点，则查找入边的Material节点
-                # --- 【修正点】移除了BELONGS_TO前面的冒号 ---
+                # --- 修改这里：移除 BELONGS_TO ---
                 query_entity = """
-                MATCH (b:Material)-[:include|BELONGS_TO]->(a)
+                MATCH (b:Material)-[:include]->(a)
                 WHERE elementId(a) = $element_id
                 RETURN b.name as name
                 LIMIT $limit

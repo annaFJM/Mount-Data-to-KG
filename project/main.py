@@ -48,7 +48,11 @@ def process_single_material(material_data, material_index, neo4j_conn, logger):
         
         try:
             labels = neo4j_conn.get_node_labels(current_element_id)
-            # ... (保留错误处理)
+            
+            if not labels:
+                error_msg = f"无法获取节点 '{current_name}' 的labels"
+                logger.error(error_msg)
+                return {'success': False, 'error': error_msg}
             
             if 'Class' in labels:
                 logger.debug("当前在Class节点，构建导航工具")
@@ -56,22 +60,50 @@ def process_single_material(material_data, material_index, neo4j_conn, logger):
                     current_element_id, current_name, neo4j_conn
                 )
                 
-                # --- 修改这里的 system_prompt ---
-                system_prompt = f"""你是材料知识图谱的导航助手。
+                # 获取是否有出边节点
+                outbound_nodes = helper_data.get('outbound_nodes', [])
+                
+                # 根据是否有子分类，构建不同的 system_prompt
+                if outbound_nodes:
+                    # 情况1：还有子分类可选
+                    logger.debug(f"发现 {len(outbound_nodes)} 个子分类，提示LLM使用 navigate_outbound")
+                    
+                    system_prompt = f"""你是材料知识图谱的导航助手。
 
 当前位置：{current_name}
+状态：🔽 **还有 {len(outbound_nodes)} 个子分类可选**
 
-任务：根据材料特征，并参考每个选项后的【例子】，选择最合适的下一步操作。
+⚠️ 重要：当前必须调用 navigate_outbound 继续向下分类，不要调用 navigate_inbound。
 
-规则：
-1. 如果可用函数中有 navigate_outbound，**必须优先**调用它移动到子分类。
-2. 仔细阅读每个选项的【例子】，选择与材料最匹配的分类。
-3. 只有当**没有 navigate_outbound**（没有更细的子分类）时，才调用 navigate_inbound。
+任务：
+1. 仔细阅读每个子分类选项后的【例子】
+2. 根据材料特征，选择最匹配的子分类
+3. 调用 navigate_outbound 移动到该子分类
 
 材料信息：
 {material_str}
 
-请选择合适的函数。"""
+请调用 navigate_outbound 函数。"""
+                else:
+                    # 情况2：已到达叶子节点，没有子分类
+                    logger.debug("当前节点是叶子节点（无子分类），提示LLM使用 navigate_inbound")
+                    
+                    system_prompt = f"""你是材料知识图谱的导航助手。
+
+当前位置：{current_name}
+状态：🎯 **已到达分类树的叶子节点（没有更细的子分类）**
+
+下一步：必须调用 navigate_inbound 查看该分类下的具体材料实例（Entity节点）。
+
+任务：
+1. 调用 navigate_inbound 查看当前分类下的材料实例
+2. 系统会返回可用的Entity节点列表
+3. 如果数量较多，会提供相似度搜索功能
+
+材料信息：
+{material_str}
+
+请调用 navigate_inbound 函数。"""
                 
                 messages = [{"role": "user", "content": system_prompt}]
                 
